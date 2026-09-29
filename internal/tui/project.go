@@ -9,10 +9,16 @@ import (
 
 	"github.com/speclib/openspec-schema-manager/internal/openspec"
 	"github.com/speclib/openspec-schema-manager/internal/registry"
+	"github.com/speclib/openspec-schema-manager/internal/source"
 )
 
 type ProjectRead struct {
 	Project openspec.Project
+}
+
+type SchemaCompared struct {
+	Name       string
+	Comparison source.Comparison
 }
 
 type projectModel struct {
@@ -26,13 +32,15 @@ type projectModel struct {
 	selected int
 	top      int
 
-	reader   *ProjectReader
-	resolver *Resolver
-	detail   *detailModel
+	reader     *ProjectReader
+	resolver   *Resolver
+	comparer   *Comparer
+	detail     *detailModel
+	comparison string
 }
 
-func newProjectScreen(inProject bool, root string, reader *ProjectReader, resolver *Resolver) *projectModel {
-	return &projectModel{inProject: inProject, root: root, reader: reader, resolver: resolver}
+func newProjectScreen(inProject bool, root string, reader *ProjectReader, resolver *Resolver, comparer *Comparer) *projectModel {
+	return &projectModel{inProject: inProject, root: root, reader: reader, resolver: resolver, comparer: comparer}
 }
 
 func (p *projectModel) Title() string { return "Project" }
@@ -53,6 +61,7 @@ func (p *projectModel) Keys() []KeyHelp {
 		{Key: "up / down", Description: "move through the schemas"},
 		{Key: "enter", Description: "open the selected schema"},
 		{Key: "s", Description: "set the selected schema as the project default"},
+		{Key: "u", Description: "compare with the registry"},
 		{Key: "p", Description: "send to the composer"},
 		{Key: "r", Description: "read the project again"},
 	}
@@ -73,6 +82,12 @@ func (p *projectModel) Update(msg tea.Msg) (Screen, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case SchemaCompared:
+		p.busy = false
+		p.comparison = msg.Comparison.Explain(msg.Name)
+		p.message = ""
+		return p, nil
+
 	case ProjectRead:
 		p.busy = false
 		p.loaded = true
@@ -116,6 +131,8 @@ func (p *projectModel) handleKey(msg tea.KeyPressMsg) (Screen, tea.Cmd) {
 		return p.setDefault()
 	case "p":
 		return p, p.sendToComposer()
+	case "u":
+		return p.compare()
 	}
 
 	return p, nil
@@ -156,6 +173,19 @@ func (p *projectModel) open() (Screen, tea.Cmd) {
 	p.detail = newDetail(row, p.resolver, p.resolver.ASCII)
 
 	return p, p.resolver.ResolveCmd(row, false)
+}
+
+func (p *projectModel) compare() (Screen, tea.Cmd) {
+	s := p.selectedSchema()
+	if s == nil || p.comparer == nil || p.busy {
+		return p, nil
+	}
+
+	p.busy = true
+	p.comparison = ""
+	p.message = "comparing " + s.Name + " with the registry"
+
+	return p, p.comparer.CompareCmd(*s)
 }
 
 func (p *projectModel) sendToComposer() tea.Cmd {
@@ -213,6 +243,11 @@ func (p *projectModel) View(width, height int) string {
 	b.WriteString(p.schemas(width, height))
 	b.WriteString("\n\n")
 	b.WriteString(p.changes(width))
+
+	if p.comparison != "" {
+		b.WriteString("\n\n")
+		b.WriteString(wrap(p.comparison, width))
+	}
 
 	for _, problem := range p.project.Problems {
 		b.WriteString("\n")
@@ -368,5 +403,24 @@ func (r *ProjectReader) Read(ctx context.Context) openspec.Project {
 func (r *ProjectReader) ReadCmd() tea.Cmd {
 	return func() tea.Msg {
 		return ProjectRead{Project: r.Read(context.Background())}
+	}
+}
+
+type Comparer struct {
+	Fetcher source.Fetcher
+	Entries func() []registry.Entry
+}
+
+func (c *Comparer) CompareCmd(s openspec.ResolvedSchema) tea.Cmd {
+	return func() tea.Msg {
+		var entries []registry.Entry
+		if c.Entries != nil {
+			entries = c.Entries()
+		}
+
+		return SchemaCompared{
+			Name:       s.Name,
+			Comparison: source.Compare(context.Background(), c.Fetcher, s.Path, s.BuiltIn(), s.Name, entries),
+		}
 	}
 }

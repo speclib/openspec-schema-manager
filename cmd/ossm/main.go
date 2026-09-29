@@ -105,6 +105,10 @@ func appOptions(opts options) (tui.Options, error) {
 		appOpts.ProjectRead = &tui.ProjectReader{CLI: cli, Root: appOpts.ProjectRoot}
 	}
 
+	appOpts.Comparer = &tui.Comparer{
+		Fetcher: source.NewGit(paths.SchemaCache),
+	}
+
 	appOpts.Registry = &tui.RegistryLoader{
 		Store: registry.Store{
 			Path: paths.RegistryFile,

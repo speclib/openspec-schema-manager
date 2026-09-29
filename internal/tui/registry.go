@@ -526,3 +526,15 @@ func (l *RegistryLoader) RefreshCmd() tea.Cmd {
 		}
 	}
 }
+
+// Entries hands the registry's entries to whatever needs them, which today is
+// the comparison in the Project view.
+func (r *registryScreenModel) Entries() []registry.Entry {
+	entries := make([]registry.Entry, 0, len(r.rows))
+	for _, row := range r.rows {
+		if row.Entry != nil {
+			entries = append(entries, *row.Entry)
+		}
+	}
+	return entries
+}

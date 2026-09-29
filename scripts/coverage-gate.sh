@@ -26,7 +26,7 @@ floor_for() {
     # Lowered from 96.0 on purpose when the TUI landed. main() and the line
     # that hands control to Bubble Tea cannot be reached without a terminal,
     # and that path is covered end to end in test/e2e instead.
-    "$module/cmd/ossm")          echo "90.0" ;;
+    "$module/cmd/ossm")          echo "91.0" ;;
     "$module/internal/ansi")     echo "100.0" ;;
     # Pure and heavily tested. The remainder is filesystem failures during a
     # write and a draft save.
@@ -52,14 +52,14 @@ floor_for() {
     "$module/internal/schema")   echo "99.0" ;;
     # The uncovered remainder is filesystem failures during a copy: a file
     # that opens and then refuses to read, a directory that vanishes mid-walk.
-    "$module/internal/source")   echo "88.0" ;;
+    "$module/internal/source")   echo "90.0" ;;
     # Lowered again with the composer, which is the largest screen and the one
     # with the most modes. The remainder is panes smaller than one row and
     # error branches reachable only when the filesystem fails mid-write.
-    "$module/internal/tui")      echo "94.5" ;;
+    "$module/internal/tui")      echo "95.0" ;;
     # Lowered from 98.0 with milestone 02. The drop is all error branches in
     # internal/registry that need a failing filesystem to reach.
-    TOTAL)                       echo "94.0" ;;
+    TOTAL)                       echo "94.5" ;;
     *)                           echo "" ;;
   esac
 }

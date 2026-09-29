@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-09-29
+goal: Someone who has never seen ossm can tell what it does, run it, and trust
+  that the acceptance criteria are checked rather than claimed

@@ -77,6 +77,7 @@
               git
               jujutsu
               openspec
+              vhs
             ];
           };
         });

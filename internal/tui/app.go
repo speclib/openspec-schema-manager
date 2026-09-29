@@ -23,6 +23,7 @@ type Options struct {
 	ProjectRead *ProjectReader
 	Recents     config.Recents
 	Drafts      compose.Drafts
+	Comparer    *Comparer
 	OpenPath    string
 }
 
@@ -42,7 +43,7 @@ func New(opts Options) Model {
 	m := Model{
 		opts: opts,
 		screens: []Screen{
-			newProjectScreen(opts.InProject, opts.ProjectRoot, opts.ProjectRead, opts.Resolver),
+			newProjectScreen(opts.InProject, opts.ProjectRoot, opts.ProjectRead, opts.Resolver, opts.Comparer),
 			newRegistryScreen(opts.Registry, opts.Resolver, opts.Installer),
 			newLocalScreen(opts.Config.SchemasDirs, opts.Recents, opts.Resolver),
 			newComposerScreen(opts.Config.SchemasDirs, opts.Drafts, opts.Resolver == nil || opts.Resolver.ASCII),
@@ -63,6 +64,15 @@ func New(opts Options) Model {
 	if opts.Registry != nil {
 		at := m.indexOf("Registry")
 		m.screens[at], _ = m.screens[at].Update(opts.Registry.Load(context.Background()))
+	}
+
+	// The comparison in the Project view needs the registry's entries, and the
+	// Registry screen is the one that has them. Wiring it here keeps the
+	// screens from knowing about each other.
+	if opts.Comparer != nil {
+		if registryScreen, ok := m.screens[m.indexOf("Registry")].(*registryScreenModel); ok {
+			opts.Comparer.Entries = registryScreen.Entries
+		}
 	}
 
 	if opts.OpenPath != "" {

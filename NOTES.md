@@ -93,16 +93,33 @@ to adopt. ossm reads `schema:` from `openspec/config.yaml`.
 
 ## 5. Update detection
 
-OpenSpec records no provenance for an installed schema. `schema fork` and
-`schema init` write a schema folder and nothing that says where it came from or
-at which ref, and `schema which` reports only the resolution source (project,
-user or built-in). So ossm cannot ask OpenSpec whether an installed schema is
-behind its registry entry.
+Settled. OpenSpec records no provenance for an installed schema: `schema fork`
+and `schema init` write a folder and nothing that says where it came from or at
+which ref, and `schema which` reports only the resolution source. So ossm cannot
+ask OpenSpec whether an installed schema is behind its registry entry.
 
-That leaves comparing content against the source, which is honest only when the
-entry pins a ref. Against a tracked branch a difference means the schema moved,
-was edited locally, or both, and ossm cannot tell which. Milestone 08 decides
-what to claim on that basis.
+What ships is a comparison, not an update check, and it says which it is.
+
+`u` on the Project tab fetches the registry entry declaring the same name and
+compares the files, reporting one of six answers: identical, differs, nothing in
+the registry declares that name, several entries do, the source could not be
+reached, or the schema is built into OpenSpec.
+
+A difference is reported as a difference. The message names the limitation
+rather than hiding it: ossm cannot tell an upstream change from a local edit. A
+test asserts the word "update" never appears in it.
+
+That still leaves it useful. Someone who installed a schema and has not touched
+it learns that upstream moved; someone who edited it learns their copy has
+drifted. Neither is told something false.
+
+Matching is by `name`, which the registry explicitly does not make unique, so
+more than one match is its own answer and names the candidates rather than
+guessing.
+
+Comparison is asked for, never run when the project view is drawn, because it
+fetches. A tool whose whole offline story is that it does not need a network
+should not turn opening a tab into one round trip per schema.
 
 ## 6. mermaid-ascii
 
