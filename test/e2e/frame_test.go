@@ -40,7 +40,7 @@ func TestTabMovesToTheNextTabAndWraps(t *testing.T) {
 	s.waitFor("Local ·")
 
 	s.send("\t")
-	s.waitFor("Built in milestone 07")
+	s.waitFor("Composer ·")
 
 	s.send("\t")
 	s.waitFor("There is no OpenSpec project here")
@@ -55,7 +55,7 @@ func TestATabIsReachableByNumber(t *testing.T) {
 	s.waitFor("Registry ·")
 
 	s.send("4")
-	s.waitFor("Built in milestone 07")
+	s.waitFor("Composer ·")
 
 	s.send("1")
 	s.waitFor("There is no OpenSpec project here")
@@ -226,7 +226,7 @@ func TestADigitTypedIntoTheFilterDoesNotSwitchTabs(t *testing.T) {
 	s.send("/4")
 	s.waitFor("filter: 4")
 
-	if drawn := flat(s.drawn()); strings.Contains(drawn, "Built in milestone 07") {
+	if drawn := flat(s.drawn()); strings.Contains(drawn, "Composer · 0 artifact") {
 		t.Errorf("typing 4 into the filter jumped to the Composer:\n%s", s.drawn())
 	}
 }
@@ -678,4 +678,178 @@ func TestTheFileTreeAndAnEditorRoundTrip(t *testing.T) {
 
 	s.waitFor("Files of minimalist")
 	s.waitFor("This schema validates")
+}
+
+func TestComposingASchemaOpenSpecAccepts(t *testing.T) {
+	root := t.TempDir()
+	schemas := localSchemasDir(t)
+	writeConfigWithDirs(t, root, "file://"+filepath.Join(root, "absent.json"), schemas)
+
+	s := newSession(t, sessionOptions{root: root})
+
+	// Send both local schemas to the composer.
+	s.send("3")
+	s.waitFor("Local · 2 schema(s)")
+	s.send("p")
+	s.waitFor("sending minimalist")
+	s.send("j")
+	s.send("p")
+	s.waitFor("sending team-review")
+
+	s.send("4")
+	s.waitFor("Composer ·")
+	s.waitFor("Palette")
+	s.waitFor("minimalist")
+	s.waitFor("team-review")
+
+	// Add the first schema's artifact, then the second's under a new id.
+	s.send("a")
+	s.waitFor("1 artifact(s)")
+
+	s.send("jj")
+	s.send("a")
+	s.waitFor("already on the canvas")
+	s.send("review")
+	s.send("\r")
+	s.waitFor("2 artifact(s)")
+
+	// Link, gate and track.
+	s.send("\x1b[C") // right, onto the canvas
+	s.send("j")
+	s.send("l")
+	s.waitFor("requires:")
+	s.send("\r")
+	s.waitFor("review requires tasks")
+
+	s.send("g")
+	s.waitFor("gate: review")
+
+	s.send("t")
+	s.send("review.md")
+	s.send("\r")
+	s.waitFor("tracks: review.md")
+	s.waitFor("ready to write")
+
+	// Write it.
+	s.send("w")
+	s.send("composed")
+	s.send("\r")
+	s.waitFor("written to")
+
+	s.send("q")
+	_ = s.waitForExit()
+
+	written := filepath.Join(schemas, "composed")
+
+	raw, err := os.ReadFile(filepath.Join(written, "schema.yaml"))
+	if err != nil {
+		t.Fatalf("the composed schema was not written: %v", err)
+	}
+	if !strings.Contains(string(raw), "# Composed with ossm from:") {
+		t.Errorf("the provenance block is missing:\n%s", raw)
+	}
+	if !strings.Contains(string(raw), "tasks as review") {
+		t.Errorf("the rename is not recorded:\n%s", raw)
+	}
+
+	if _, err := exec.LookPath("openspec"); err != nil {
+		t.Skip("the openspec CLI is not on PATH; the schema was written but not validated")
+	}
+
+	project := openSpecProjectWithCLI(t)
+
+	destination := filepath.Join(project, "openspec", "schemas", "composed")
+	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
+		t.Fatalf("creating the schemas directory: %v", err)
+	}
+
+	copyDir(t, written, destination)
+
+	validate := exec.Command("openspec", "schema", "validate", "composed", "--json")
+	validate.Dir = project
+	validate.Env = append(os.Environ(), "HOME="+t.TempDir())
+
+	out, err := validate.CombinedOutput()
+	if err != nil || !strings.Contains(string(out), `"valid": true`) {
+		t.Fatalf("OpenSpec rejected the composed schema: %v\n%s", err, out)
+	}
+
+	change := exec.Command("openspec", "new", "change", "try-composed", "--schema", "composed", "--json")
+	change.Dir = project
+	change.Env = append(os.Environ(), "HOME="+t.TempDir())
+
+	if out, err := change.CombinedOutput(); err != nil {
+		t.Fatalf("a change could not be created with the composed schema: %v\n%s", err, out)
+	}
+}
+
+func copyDir(t *testing.T, from, to string) {
+	t.Helper()
+
+	err := filepath.WalkDir(from, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		rel, err := filepath.Rel(from, path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(to, rel)
+
+		if d.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+
+		body, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		return os.WriteFile(target, body, 0o644)
+	})
+	if err != nil {
+		t.Fatalf("copying %s to %s: %v", from, to, err)
+	}
+}
+
+func TestTheComposerReportsACycle(t *testing.T) {
+	root := t.TempDir()
+	schemas := localSchemasDir(t)
+	writeConfigWithDirs(t, root, "file://"+filepath.Join(root, "absent.json"), schemas)
+
+	s := newSession(t, sessionOptions{root: root})
+
+	s.send("3")
+	s.waitFor("Local · 2 schema(s)")
+	s.send("p")
+	s.waitFor("sending minimalist")
+	s.send("j")
+	s.send("p")
+	s.waitFor("sending team-review")
+
+	s.send("4")
+	s.waitFor("Palette")
+
+	s.send("a")
+	s.waitFor("1 artifact(s)")
+	s.send("jj")
+	s.send("a")
+	s.waitFor("already on the canvas")
+	s.send("second")
+	s.send("\r")
+	s.waitFor("2 artifact(s)")
+
+	s.send("\x1b[C")
+	s.send("j")
+	s.send("l")
+	s.waitFor("requires:")
+	s.send("\r")
+
+	s.send("k")
+	s.send("l")
+	s.waitFor("requires:")
+	s.send("\r")
+
+	s.waitFor("cycle")
 }

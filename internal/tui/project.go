@@ -53,6 +53,7 @@ func (p *projectModel) Keys() []KeyHelp {
 		{Key: "up / down", Description: "move through the schemas"},
 		{Key: "enter", Description: "open the selected schema"},
 		{Key: "s", Description: "set the selected schema as the project default"},
+		{Key: "p", Description: "send to the composer"},
 		{Key: "r", Description: "read the project again"},
 	}
 }
@@ -113,6 +114,8 @@ func (p *projectModel) handleKey(msg tea.KeyPressMsg) (Screen, tea.Cmd) {
 		return p.open()
 	case "s":
 		return p.setDefault()
+	case "p":
+		return p, p.sendToComposer()
 	}
 
 	return p, nil
@@ -153,6 +156,17 @@ func (p *projectModel) open() (Screen, tea.Cmd) {
 	p.detail = newDetail(row, p.resolver, p.resolver.ASCII)
 
 	return p, p.resolver.ResolveCmd(row, false)
+}
+
+func (p *projectModel) sendToComposer() tea.Cmd {
+	s := p.selectedSchema()
+	if s == nil {
+		return nil
+	}
+
+	p.message = "sending " + s.Name + " to the composer"
+
+	return sendToComposerCmd(p.resolver, registry.RowFromInstalled(s.Name, s.Source, s.Path, nil))
 }
 
 func (p *projectModel) setDefault() (Screen, tea.Cmd) {

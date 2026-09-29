@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-09-29
+goal: A user can assemble a workflow from parts of the schemas they liked, see
+  what is wrong with it as they go, and write it out as a schema OpenSpec
+  accepts

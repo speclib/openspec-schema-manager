@@ -298,37 +298,6 @@ func TestATinyWindowStillDraws(t *testing.T) {
 	}
 }
 
-func TestEveryUnbuiltTabSaysWhatItWillHold(t *testing.T) {
-	t.Parallel()
-
-	m := outsideProject()
-
-	for i, screen := range m.screens {
-		m.current = i
-		view := render(m)
-
-		if _, unbuilt := screen.(placeholder); unbuilt && !strings.Contains(view, "Built in milestone") {
-			t.Errorf("the %s tab does not name the milestone that builds it:\n%s", screen.Title(), view)
-		}
-		if len(screen.Keys()) == 0 {
-			t.Errorf("the %s tab lists no keys, so the help overlay cannot be honest about it", screen.Title())
-		}
-	}
-}
-
-func TestTheRegistryTabIsNoLongerAPlaceholder(t *testing.T) {
-	t.Parallel()
-
-	m := outsideProject()
-
-	if _, isPlaceholder := m.screens[m.indexOf("Registry")].(placeholder); isPlaceholder {
-		t.Error("the Registry tab is still a placeholder")
-	}
-	if view := render(press(t, m, "2")); strings.Contains(view, "Built in milestone") {
-		t.Errorf("the Registry tab draws a placeholder:\n%s", view)
-	}
-}
-
 func TestAnUnhandledKeyReachesTheScreen(t *testing.T) {
 	t.Parallel()
 
@@ -523,30 +492,6 @@ func TestTruncate(t *testing.T) {
 		if got := truncate(tc.in, tc.width); got != tc.want {
 			t.Errorf("truncate(%q, %d) = %q, want %q", tc.in, tc.width, got, tc.want)
 		}
-	}
-}
-
-func TestAPlaceholderIgnoresEveryMessage(t *testing.T) {
-	t.Parallel()
-
-	type odd struct{}
-
-	p := composerScreen()
-
-	updated, cmd := p.Update(odd{})
-	if cmd != nil {
-		t.Error("a placeholder returned a command")
-	}
-	if updated.Title() != "Composer" {
-		t.Errorf("title = %q", updated.Title())
-	}
-
-	updated, cmd = p.Update(keyPress("z"))
-	if cmd != nil {
-		t.Error("a placeholder returned a command for a key press")
-	}
-	if updated.Capturing() {
-		t.Error("a placeholder reports that it captures text")
 	}
 }
 
@@ -745,5 +690,72 @@ func TestTheHelpMentionsThePathPrompt(t *testing.T) {
 
 	if got := flat(render(m)); !strings.Contains(got, "open a schema folder by path") {
 		t.Errorf("the help does not mention the path prompt:\n%s", got)
+	}
+}
+
+func TestEveryTabDrawsSomethingAndReportsItsKeys(t *testing.T) {
+	t.Parallel()
+
+	m := withLocal(t, nil)
+
+	for i, screen := range m.screens {
+		m.current = i
+
+		if view := flat(render(m)); len(view) < 40 {
+			t.Errorf("the %s tab drew almost nothing:\n%s", screen.Title(), view)
+		}
+		if len(screen.Keys()) == 0 {
+			t.Errorf("the %s tab lists no keys, so the help overlay cannot be honest about it", screen.Title())
+		}
+	}
+}
+
+func TestPSendsASchemaToTheComposerWithoutLeavingTheTab(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	dir := localSchema(t, root, "quick", "quick")
+
+	m := withLocal(t, []string{root})
+	m = press(t, m, "3")
+
+	before := m.CurrentTitle()
+
+	updated, cmd := m.Update(keyPress("p"))
+	m = updated.(Model)
+
+	if cmd == nil {
+		t.Fatal("p produced no command")
+	}
+	if m.CurrentTitle() != before {
+		t.Errorf("p moved to the %s tab", m.CurrentTitle())
+	}
+
+	updated, _ = m.Update(cmd())
+	m = updated.(Model)
+
+	m = press(t, m, "4")
+
+	got := flat(render(m))
+	if !strings.Contains(got, "quick") {
+		t.Errorf("the schema did not reach the palette:\n%s", got)
+	}
+	if !strings.Contains(got, dir[:0]+"tasks") && !strings.Contains(got, "Palette") {
+		t.Errorf("the palette is not drawn:\n%s", got)
+	}
+}
+
+func TestASchemaThatCannotBeReadIsReportedByTheComposer(t *testing.T) {
+	t.Parallel()
+
+	m := withLocal(t, nil)
+
+	updated, _ := m.Update(SourceAdded{Err: errNoResolver})
+	m = updated.(Model)
+
+	m = press(t, m, "4")
+
+	if got := flat(render(m)); !strings.Contains(got, "could not add that schema") {
+		t.Errorf("the failure is not reported:\n%s", got)
 	}
 }

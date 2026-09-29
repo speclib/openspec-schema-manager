@@ -9,6 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/speclib/openspec-schema-manager/internal/compose"
 	"github.com/speclib/openspec-schema-manager/internal/config"
 	"github.com/speclib/openspec-schema-manager/internal/graph"
 	"github.com/speclib/openspec-schema-manager/internal/openspec"
@@ -77,6 +78,7 @@ func appOptions(opts options) (tui.Options, error) {
 		Config:   cfg,
 		Paths:    paths,
 		Recents:  config.Recents{Path: paths.RecentsFile, Cap: cfg.RecentsCap},
+		Drafts:   compose.Drafts{Dir: paths.DraftsDir},
 		OpenPath: opts.path,
 	}
 

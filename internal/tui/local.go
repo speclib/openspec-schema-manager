@@ -84,6 +84,7 @@ func (m *localModel) Keys() []KeyHelp {
 		{Key: "enter", Description: "open the selected schema"},
 		{Key: "t", Description: "browse the schema's files"},
 		{Key: "c", Description: "duplicate under a new name"},
+		{Key: "p", Description: "send to the composer"},
 		{Key: "r", Description: "scan the directories again"},
 	}
 }
@@ -224,6 +225,8 @@ func (m *localModel) handleKey(msg tea.KeyPressMsg) (Screen, tea.Cmd) {
 		m.openTree()
 	case "c":
 		m.startDuplicate()
+	case "p":
+		return m, m.sendToComposer()
 	}
 
 	return m, nil
@@ -330,6 +333,17 @@ func (m *localModel) edit() tea.Cmd {
 	return tea.ExecProcess(cmd, func(err error) tea.Msg {
 		return EditorFinished{Err: err}
 	})
+}
+
+func (m *localModel) sendToComposer() tea.Cmd {
+	row := m.selectedRow()
+	if row == nil || row.missing {
+		return nil
+	}
+
+	m.message = "sending " + row.local.Label() + " to the composer"
+
+	return sendToComposerCmd(m.resolver, registry.RowFromInstalled(row.local.Label(), "user", row.local.Dir, nil))
 }
 
 func (m *localModel) startDuplicate() {

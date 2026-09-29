@@ -79,6 +79,7 @@ func (r *registryScreenModel) Keys() []KeyHelp {
 	return []KeyHelp{
 		{Key: "enter", Description: "open the selected schema"},
 		{Key: "i", Description: "install into this project"},
+		{Key: "p", Description: "send to the composer"},
 		{Key: "up / down", Description: "move the selection"},
 		{Key: "/", Description: "filter over id, name and description"},
 		{Key: "esc", Description: "clear the filter"},
@@ -190,9 +191,22 @@ func (r *registryScreenModel) handleKey(msg tea.KeyPressMsg) (Screen, tea.Cmd) {
 		return r.open()
 	case "i":
 		return r.startInstall()
+	case "p":
+		return r.sendToComposer()
 	}
 
 	return r, nil
+}
+
+func (r *registryScreenModel) sendToComposer() (Screen, tea.Cmd) {
+	row := r.selectedRow()
+	if row == nil {
+		return r, nil
+	}
+
+	r.message = "sending " + row.Name + " to the composer"
+
+	return r, sendToComposerCmd(r.resolver, *row)
 }
 
 func (r *registryScreenModel) startInstall() (Screen, tea.Cmd) {

@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/speclib/openspec-schema-manager/internal/compose"
 	"github.com/speclib/openspec-schema-manager/internal/config"
 )
 
@@ -21,6 +22,7 @@ type Options struct {
 	Installer   *Installer
 	ProjectRead *ProjectReader
 	Recents     config.Recents
+	Drafts      compose.Drafts
 	OpenPath    string
 }
 
@@ -43,7 +45,7 @@ func New(opts Options) Model {
 			newProjectScreen(opts.InProject, opts.ProjectRoot, opts.ProjectRead, opts.Resolver),
 			newRegistryScreen(opts.Registry, opts.Resolver, opts.Installer),
 			newLocalScreen(opts.Config.SchemasDirs, opts.Recents, opts.Resolver),
-			composerScreen(),
+			newComposerScreen(opts.Config.SchemasDirs, opts.Drafts, opts.Resolver == nil || opts.Resolver.ASCII),
 		},
 		prompt: newPathPrompt(),
 		width:  80,
@@ -73,6 +75,24 @@ func New(opts Options) Model {
 func (m *Model) local() *localModel {
 	screen, _ := m.screens[m.indexOf("Local")].(*localModel)
 	return screen
+}
+
+func (m *Model) composer() *composerModel {
+	screen, _ := m.screens[m.indexOf("Composer")].(*composerModel)
+	return screen
+}
+
+// SendToComposer adds a schema to the composer's palette without leaving the
+// tab it was sent from.
+func (m Model) SendToComposer(msg SourceAdded) (Model, tea.Cmd) {
+	composer := m.composer()
+	if composer == nil {
+		return m, nil
+	}
+
+	_, cmd := composer.Update(msg)
+
+	return m, cmd
 }
 
 func (m *Model) openPath(dir string) {
@@ -124,6 +144,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
+	}
+
+	if added, ok := msg.(SourceAdded); ok {
+		return m.SendToComposer(added)
 	}
 
 	if _, installed := msg.(InstallFinished); installed {
