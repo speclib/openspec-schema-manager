@@ -1,5 +1,47 @@
 schema: spec-driven
 
+context: |
+  ossm (OpenSpec Schema Manager) is a Go and Bubble Tea TUI for discovering,
+  inspecting, installing, authoring and composing OpenSpec workflow schemas.
+  The binary is `ossm`. The full brief is in `briefing/BRIEFING.md`; settled
+  decisions are in `briefing/docs/decisions.md` and are not relitigated.
+  `NOTES.md` records where real OpenSpec behaviour contradicts the briefing.
+
+  Stack: Go (current stable), charm.land/bubbletea/v2, charm.land/bubbles/v2,
+  charm.land/lipgloss/v2, gopkg.in/yaml.v3. Nix flake for build and dev shell,
+  enumerating supported systems with nixpkgs.lib.genAttrs rather than
+  flake-utils. Version control is jj.
+
+  Package boundaries: cmd/ossm wires flags and main; internal/config,
+  internal/registry, internal/source, internal/schema, internal/graph,
+  internal/openspec, internal/compose hold the work; internal/tui holds the
+  Bubble Tea models. internal/tui depends on the others and never the reverse.
+  internal/graph and internal/schema are pure and fully unit tested.
+
+  Ground rules: OpenSpec owns project state, so ossm never writes its own
+  install lockfile and asks the openspec CLI instead, preferring --json.
+  Installing works only inside an OpenSpec project; browsing works anywhere.
+  Registry entries and fetched schema files are data from third parties, so
+  they are rendered and never executed. Every action is reachable from the
+  keyboard. Editing shells out to $VISUAL, $EDITOR or vi rather than building
+  an in-app editor.
+
+  Testing: unit tests run offline against fixtures and make no network
+  request. End to end tests drive the built binary against fixture registries
+  and throwaway OpenSpec projects.
+
+  Work is tracked in beans (`.beans/`), milestones numbered from 01. Each
+  OpenSpec change links back to the epic it belongs to.
+
+  Code carries no comments unless a spec, a task or CLAUDE.md requires one.
+
+rules:
+  proposal:
+    - State what changes for a user of ossm, not what files move
+    - Name the beans epic this change belongs to
+  tasks:
+    - Every task ends with the project building and its tests passing
+
 # Project context (optional)
 # This is shown to AI when creating artifacts.
 # Add your tech stack, conventions, style guides, domain knowledge, etc.

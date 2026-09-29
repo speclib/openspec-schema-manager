@@ -1,0 +1,41 @@
+# The gate. scripts/coverage-gate.sh decides whether the project passes, and
+# this workflow calls it rather than restating its steps or its floors.
+#
+# Anything that needs the network belongs in a separate workflow. This one has
+# to match what `nix flake check` runs, and that builds in a sandbox with no
+# network at all.
+name: gate
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run the gate
+        run: bash scripts/coverage-gate.sh
+
+  flake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: nix flake check
+        run: nix flake check --print-build-logs

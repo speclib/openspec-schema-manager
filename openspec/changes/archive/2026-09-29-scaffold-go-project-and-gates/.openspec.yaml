@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-09-29
+goal: A contributor can clone the repo, enter the dev shell, build ossm, run the
+  tests and have nix flake check enforce the same floors CI does
