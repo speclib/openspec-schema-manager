@@ -6,15 +6,29 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/speclib/openspec-schema-manager/internal/config"
+	"github.com/speclib/openspec-schema-manager/internal/openspec"
+	"github.com/speclib/openspec-schema-manager/internal/tui"
 )
 
 var version = "dev"
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, isTerminal(os.Stdout)))
 }
 
-func run(args []string, stdout, stderr io.Writer) int {
+func isTerminal(f *os.File) bool {
+	info, err := f.Stat()
+	if err != nil {
+		return false
+	}
+	return info.Mode()&os.ModeCharDevice != 0
+}
+
+func run(args []string, stdout, stderr io.Writer, terminal bool) int {
 	opts, err := parseFlags(args, stdout)
 	switch {
 	case errors.Is(err, errUsage):
@@ -29,6 +43,57 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	fmt.Fprintln(stderr, "ossm: the interface is not built yet")
-	return 1
+	if !terminal {
+		fmt.Fprintln(stderr, "ossm: this is a terminal application and standard output is not a terminal.")
+		fmt.Fprintln(stderr, "Run it in a terminal, or use --version or --help, which need none.")
+		return 1
+	}
+
+	if err := start(opts); err != nil {
+		fmt.Fprintln(stderr, "ossm:", err)
+		return 1
+	}
+
+	return 0
+}
+
+func appOptions(opts options) (tui.Options, error) {
+	cfg, paths, err := config.Load()
+	if err != nil {
+		return tui.Options{}, err
+	}
+
+	workDir, err := os.Getwd()
+	if err != nil {
+		return tui.Options{}, err
+	}
+
+	if opts.path != "" {
+		workDir = opts.path
+	}
+
+	appOpts := tui.Options{
+		Version: strings.TrimSpace(version),
+		WorkDir: workDir,
+		Config:  cfg,
+		Paths:   paths,
+	}
+
+	if root, err := openspec.FindProjectRoot(workDir); err == nil {
+		appOpts.InProject = true
+		appOpts.ProjectRoot = root
+	}
+
+	return appOpts, nil
+}
+
+func start(opts options) error {
+	appOpts, err := appOptions(opts)
+	if err != nil {
+		return err
+	}
+
+	_, err = tea.NewProgram(tui.New(appOpts)).Run()
+
+	return err
 }

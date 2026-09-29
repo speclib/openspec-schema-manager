@@ -81,6 +81,7 @@ func TestOnlyTheTUIAndTheCommandDependOnTheTUI(t *testing.T) {
 
 func TestEveryInternalPackageIsListed(t *testing.T) {
 	want := []string{
+		"internal/ansi",
 		"internal/arch",
 		"internal/compose",
 		"internal/config",
@@ -90,6 +91,7 @@ func TestEveryInternalPackageIsListed(t *testing.T) {
 		"internal/schema",
 		"internal/source",
 		"internal/tui",
+		"test/e2e",
 	}
 
 	seen := make(map[string]bool)

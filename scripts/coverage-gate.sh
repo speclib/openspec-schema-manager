@@ -23,20 +23,24 @@ module="github.com/speclib/openspec-schema-manager"
 
 floor_for() {
   case "$1" in
-    # Everything but main() is reachable from a test, because run() takes
-    # writers rather than files. main() is the one uncovered function.
-    "$module/cmd/ossm")          echo "96.0" ;;
+    # Lowered from 96.0 on purpose when the TUI landed. main() and the line
+    # that hands control to Bubble Tea cannot be reached without a terminal,
+    # and that path is covered end to end in test/e2e instead.
+    "$module/cmd/ossm")          echo "90.0" ;;
+    "$module/internal/ansi")     echo "100.0" ;;
     "$module/internal/compose")  echo "" ;;
     # Pure and fully covered. The floor sits under 100 because
     # TestAnUnreadableFileIsReported skips when the suite runs as root, which
     # some CI containers do, and that costs about a point.
     "$module/internal/config")   echo "98.0" ;;
     "$module/internal/graph")    echo "" ;;
-    "$module/internal/openspec") echo "" ;;
+    # 90.9 in FindProjectRoot: filepath.Abs only fails when the working
+    # directory has been removed underneath the process.
+    "$module/internal/openspec") echo "92.0" ;;
     "$module/internal/registry") echo "" ;;
     "$module/internal/schema")   echo "" ;;
     "$module/internal/source")   echo "" ;;
-    "$module/internal/tui")      echo "" ;;
+    "$module/internal/tui")      echo "99.0" ;;
     TOTAL)                       echo "98.0" ;;
     *)                           echo "" ;;
   esac

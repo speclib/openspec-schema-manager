@@ -11,7 +11,7 @@ buildGoModule {
 
   ldflags = [ "-s" "-w" "-X main.version=${version}" ];
 
-  vendorHash = "sha256-g+yaVIx4jxpAQ/+WrGKxhVeliYx7nLQe/zsGpxV4Fn4=";
+  vendorHash = "sha256-Eqdr8gBEStdsx7Ht97P7IzBacvmrE/Fcowm/LEYHVkg=";
 
   doCheck = false;
 

@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-09-29
+goal: A tester can run ossm, move between its four tabs and open help, and an
+  automated test can assert that without a terminal
