@@ -1,0 +1,11 @@
+name: unknown-requirement
+version: 1
+description: An artifact requiring something no artifact declares
+artifacts:
+  - id: tasks
+    generates: tasks.md
+    template: tasks.md
+    requires: [specs]
+apply:
+  requires: [tasks]
+  tracks: tasks.md

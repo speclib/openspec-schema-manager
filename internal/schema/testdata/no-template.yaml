@@ -1,0 +1,9 @@
+name: no-template
+version: 1
+description: An artifact declaring no template
+artifacts:
+  - id: tasks
+    generates: tasks.md
+apply:
+  requires: [tasks]
+  tracks: tasks.md

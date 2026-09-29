@@ -1,0 +1,16 @@
+name: wide
+version: 1
+description: Three independent artifacts all gating apply
+artifacts:
+  - id: research
+    generates: research.md
+    template: research.md
+  - id: risks
+    generates: risks.md
+    template: risks.md
+  - id: budget
+    generates: budget.md
+    template: budget.md
+apply:
+  requires: [research, risks, budget]
+  tracks: research.md

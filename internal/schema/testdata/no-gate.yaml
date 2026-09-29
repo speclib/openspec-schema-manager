@@ -1,0 +1,9 @@
+name: no-gate
+version: 1
+description: Nothing gates apply and nothing is tracked
+artifacts:
+  - id: tasks
+    generates: tasks.md
+    template: tasks.md
+apply:
+  requires: []

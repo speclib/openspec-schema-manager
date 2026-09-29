@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-09-29
+goal: Two schemas can be compared on figures rather than on impressions, and the
+  same graph feeds the diagram and the web front

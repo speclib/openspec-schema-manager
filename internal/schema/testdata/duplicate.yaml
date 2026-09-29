@@ -1,0 +1,13 @@
+name: duplicate
+version: 1
+description: Two artifacts sharing an id
+artifacts:
+  - id: tasks
+    generates: tasks.md
+    template: tasks.md
+  - id: tasks
+    generates: other.md
+    template: other.md
+apply:
+  requires: [tasks]
+  tracks: tasks.md

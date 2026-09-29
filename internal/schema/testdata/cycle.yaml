@@ -1,0 +1,18 @@
+name: cycle
+version: 1
+description: design and tasks require each other
+artifacts:
+  - id: proposal
+    generates: proposal.md
+    template: proposal.md
+  - id: design
+    generates: design.md
+    template: design.md
+    requires: [tasks]
+  - id: tasks
+    generates: tasks.md
+    template: tasks.md
+    requires: [design]
+apply:
+  requires: [tasks]
+  tracks: tasks.md

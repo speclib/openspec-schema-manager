@@ -1,0 +1,10 @@
+name: single
+version: 1
+description: One artifact and nothing else
+artifacts:
+  - id: tasks
+    generates: tasks.md
+    template: tasks.md
+apply:
+  requires: [tasks]
+  tracks: tasks.md

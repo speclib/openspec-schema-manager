@@ -1,0 +1,14 @@
+name: collides
+version: 1
+description: Two artifacts writing the same file
+artifacts:
+  - id: specs
+    generates: notes.md
+    template: spec.md
+  - id: tasks
+    generates: notes.md
+    template: tasks.md
+    requires: [specs]
+apply:
+  requires: [tasks]
+  tracks: notes.md

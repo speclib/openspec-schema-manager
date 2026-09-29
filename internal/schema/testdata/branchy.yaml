@@ -1,0 +1,22 @@
+name: branchy
+version: 1
+description: Branches after the proposal and joins again at tasks
+artifacts:
+  - id: proposal
+    generates: proposal.md
+    template: proposal.md
+  - id: specs
+    generates: specs/**/*.md
+    template: spec.md
+    requires: [proposal]
+  - id: design
+    generates: design.md
+    template: design.md
+    requires: [proposal]
+  - id: tasks
+    generates: tasks.md
+    template: tasks.md
+    requires: [specs, design]
+apply:
+  requires: [tasks]
+  tracks: tasks.md

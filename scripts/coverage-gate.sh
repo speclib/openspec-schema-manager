@@ -33,7 +33,9 @@ floor_for() {
     # TestAnUnreadableFileIsReported skips when the suite runs as root, which
     # some CI containers do, and that costs about a point.
     "$module/internal/config")   echo "98.0" ;;
-    "$module/internal/graph")    echo "" ;;
+    # Pure, and the briefing asks for 80% on the core packages. It measures
+    # 100, so the floor is 100.
+    "$module/internal/graph")    echo "100.0" ;;
     # 90.9 in FindProjectRoot: filepath.Abs only fails when the working
     # directory has been removed underneath the process.
     "$module/internal/openspec") echo "92.0" ;;
@@ -41,14 +43,16 @@ floor_for() {
     # marshaller to fail: a JSON encoder refusing a plain struct, a rename
     # failing after a successful write.
     "$module/internal/registry") echo "93.0" ;;
-    "$module/internal/schema")   echo "" ;;
+    # Pure. The uncovered remainder is cycleFrom's fallback, which only runs
+    # if the walk loses the node it is standing on.
+    "$module/internal/schema")   echo "99.0" ;;
     "$module/internal/source")   echo "" ;;
     # Lowered from 99.0 when the Registry screen landed: the scroll clamp for
     # a pane shorter than the selection needs a window size no terminal gives.
     "$module/internal/tui")      echo "98.0" ;;
     # Lowered from 98.0 with milestone 02. The drop is all error branches in
     # internal/registry that need a failing filesystem to reach.
-    TOTAL)                       echo "96.5" ;;
+    TOTAL)                       echo "97.0" ;;
     *)                           echo "" ;;
   esac
 }

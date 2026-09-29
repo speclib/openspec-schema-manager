@@ -1,0 +1,17 @@
+name: orphan
+version: 1
+description: An artifact nothing requires and that does not gate apply
+artifacts:
+  - id: specs
+    generates: specs.md
+    template: spec.md
+  - id: tasks
+    generates: tasks.md
+    template: tasks.md
+    requires: [specs]
+  - id: sketch
+    generates: sketch.md
+    template: sketch.md
+apply:
+  requires: [tasks]
+  tracks: tasks.md

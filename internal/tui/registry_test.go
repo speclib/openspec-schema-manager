@@ -661,3 +661,47 @@ func TestLoadTreatsACorruptCacheAsNoCache(t *testing.T) {
 		t.Error("a corrupt cache was not reported as stale")
 	}
 }
+
+func TestTheFrameCarriesTheCachedRegistryBeforeInit(t *testing.T) {
+	t.Parallel()
+
+	l := newLoader(t, fixtureRegistry, nil)
+	seed(t, l, fixtureRegistry, time.Hour)
+
+	m := New(Options{Version: "0.1.0", Registry: l})
+
+	if got := flat(ansi.Strip(m.Render())); !strings.Contains(got, "SuperSpec") {
+		t.Errorf("the cached registry is not in the model before Init:\n%s", got)
+	}
+	if cmd := m.Init(); cmd != nil {
+		t.Error("Init asked for a refresh on a fresh cache")
+	}
+}
+
+func TestARefreshIsNotOverwrittenByTheCacheRead(t *testing.T) {
+	t.Parallel()
+
+	l := newLoader(t, fixtureRegistry, nil)
+
+	m := New(Options{Version: "0.1.0", Registry: l})
+
+	if got := flat(ansi.Strip(m.Render())); !strings.Contains(got, "never been fetched") {
+		t.Fatalf("the empty state is not drawn before the refresh:\n%s", got)
+	}
+
+	cmd := m.Init()
+	if cmd == nil {
+		t.Fatal("Init asked for no refresh with no cache at all")
+	}
+
+	updated, _ := m.Update(cmd())
+	m = updated.(Model)
+
+	got := flat(ansi.Strip(m.Render()))
+	if !strings.Contains(got, "SuperSpec") {
+		t.Errorf("the refreshed registry is not drawn:\n%s", got)
+	}
+	if strings.Contains(got, "never fetched") {
+		t.Errorf("the refresh was overwritten by the cache read:\n%s", got)
+	}
+}

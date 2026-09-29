@@ -1,0 +1,10 @@
+name: unknown-gate
+version: 1
+description: apply.requires names an artifact that does not exist
+artifacts:
+  - id: tasks
+    generates: tasks.md
+    template: tasks.md
+apply:
+  requires: [verify]
+  tracks: tasks.md

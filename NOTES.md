@@ -143,3 +143,31 @@ This is the opposite of what `internal/config` does with `config.yml`, where an
 unknown key is an error. A config file is written by the user in front of you,
 so a typo is worth stopping for. A registry file is written by someone else and
 may be newer than the reader.
+
+## 10. schema.yaml as the real schemas declare it
+
+The briefing's account in section 3 is accurate as far as it goes. Checked
+against the `spec-driven` schema OpenSpec 1.10.0 ships and the two fixtures in
+the briefing package, one field is missing from it:
+
+`apply` carries an `instruction` block of its own, alongside `requires` and
+`tracks`. `spec-driven` uses it.
+
+Everything else matches: an artifact carries `id`, `generates`, `template`, an
+optional `description`, an optional `instruction` and `requires`; a schema
+carries `name`, `version`, `description`, `artifacts` and `apply`.
+
+Two details worth recording because they shape the model:
+
+`generates` is sometimes a glob (`specs/**/*.md`) and sometimes one path
+(`tasks.md`). It is kept as written, because expanding it needs a directory that
+may not exist yet.
+
+`version` is `1` in every schema seen. It is decoded as an integer, so a schema
+declaring something else fails with an error naming the field rather than
+silently reading as zero.
+
+Schema parsing is strict, unlike registry parsing: an unknown key is an error.
+A schema is written by the user or fetched from a repository they chose. A key
+ossm silently ignores there is a workflow step that quietly does not happen,
+which is worse than a failed parse.

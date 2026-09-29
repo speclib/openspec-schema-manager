@@ -51,6 +51,11 @@ func New(opts Options) Model {
 		m.status = opts.ProjectRoot
 	}
 
+	if opts.Registry != nil {
+		at := m.indexOf("Registry")
+		m.screens[at], _ = m.screens[at].Update(opts.Registry.Load(context.Background()))
+	}
+
 	return m
 }
 
@@ -63,20 +68,16 @@ func (m Model) indexOf(title string) int {
 	return 0
 }
 
+// Init asks for a refresh and nothing else. The cached registry is already in
+// the model, applied by New: it is a local file read, shorter than a frame, and
+// batching it alongside the fetch let a fast fetch be overwritten by the stale
+// read that started before it.
 func (m Model) Init() tea.Cmd {
-	if m.opts.Registry == nil {
+	if m.opts.Registry == nil || !m.opts.Registry.Stale() {
 		return nil
 	}
 
-	loader := m.opts.Registry
-	loaded := loader.Load(context.Background())
-
-	cmds := []tea.Cmd{func() tea.Msg { return loaded }}
-	if loader.Stale() {
-		cmds = append(cmds, loader.RefreshCmd())
-	}
-
-	return tea.Batch(cmds...)
+	return m.opts.Registry.RefreshCmd()
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

@@ -1,0 +1,7 @@
+name: no-artifacts
+version: 1
+description: No artifacts at all
+artifacts: []
+apply:
+  requires: [tasks]
+  tracks: tasks.md
