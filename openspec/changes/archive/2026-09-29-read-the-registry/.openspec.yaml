@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-09-29
+goal: The Registry tab lists every schema available to a user, searchable, and
+  works from cache when the network is gone

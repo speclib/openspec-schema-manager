@@ -11,6 +11,7 @@ import (
 
 	"github.com/speclib/openspec-schema-manager/internal/config"
 	"github.com/speclib/openspec-schema-manager/internal/openspec"
+	"github.com/speclib/openspec-schema-manager/internal/registry"
 	"github.com/speclib/openspec-schema-manager/internal/tui"
 )
 
@@ -82,6 +83,17 @@ func appOptions(opts options) (tui.Options, error) {
 	if root, err := openspec.FindProjectRoot(workDir); err == nil {
 		appOpts.InProject = true
 		appOpts.ProjectRoot = root
+	}
+
+	appOpts.Registry = &tui.RegistryLoader{
+		Store: registry.Store{
+			Path: paths.RegistryFile,
+			URL:  cfg.RegistryURL,
+		},
+		Fetcher: registry.NewHTTPFetcher(),
+		CLI:     openspec.NewExec(),
+		WorkDir: workDir,
+		TTL:     cfg.RegistryTTL,
 	}
 
 	return appOpts, nil

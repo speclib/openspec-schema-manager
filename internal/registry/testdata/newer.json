@@ -1,0 +1,17 @@
+{
+  "schemas": [
+    {
+      "id": "speclib/tinychange",
+      "name": "tinychange",
+      "description": "Lean specs to tasks workflow for very small changes.",
+      "artifacts": ["specs", "tasks"],
+      "source": {
+        "repo": "https://github.com/speclib/openspec-tinychange-schema",
+        "path": "openspec/schemas/tinychange",
+        "signature": "not a field ossm knows"
+      },
+      "downloads": 4021,
+      "type": "workflow-schema"
+    }
+  ]
+}

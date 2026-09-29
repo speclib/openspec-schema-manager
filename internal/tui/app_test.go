@@ -184,8 +184,8 @@ func TestHelpOpensAndLists(t *testing.T) {
 		t.Fatal("? did not open the help overlay")
 	}
 
-	view := render(m)
-	for _, want := range []string{"Everywhere", "tab / shift+tab", "ctrl+c", "Registry", "install into this project"} {
+	view := flat(render(m))
+	for _, want := range []string{"Everywhere", "tab / shift+tab", "ctrl+c", "Registry", "filter over id, name and description"} {
 		if !strings.Contains(view, want) {
 			t.Errorf("the help overlay does not mention %q:\n%s", want, view)
 		}
@@ -296,7 +296,7 @@ func TestATinyWindowStillDraws(t *testing.T) {
 	}
 }
 
-func TestEveryTabSaysWhatItWillHold(t *testing.T) {
+func TestEveryUnbuiltTabSaysWhatItWillHold(t *testing.T) {
 	t.Parallel()
 
 	m := outsideProject()
@@ -305,12 +305,25 @@ func TestEveryTabSaysWhatItWillHold(t *testing.T) {
 		m.current = i
 		view := render(m)
 
-		if !strings.Contains(view, "Built in milestone") {
+		if _, unbuilt := screen.(placeholder); unbuilt && !strings.Contains(view, "Built in milestone") {
 			t.Errorf("the %s tab does not name the milestone that builds it:\n%s", screen.Title(), view)
 		}
 		if len(screen.Keys()) == 0 {
 			t.Errorf("the %s tab lists no keys, so the help overlay cannot be honest about it", screen.Title())
 		}
+	}
+}
+
+func TestTheRegistryTabIsNoLongerAPlaceholder(t *testing.T) {
+	t.Parallel()
+
+	m := outsideProject()
+
+	if _, isPlaceholder := m.screens[m.indexOf("Registry")].(placeholder); isPlaceholder {
+		t.Error("the Registry tab is still a placeholder")
+	}
+	if view := render(press(t, m, "2")); strings.Contains(view, "Built in milestone") {
+		t.Errorf("the Registry tab draws a placeholder:\n%s", view)
 	}
 }
 
@@ -354,11 +367,50 @@ func TestViewIsAnAltScreenView(t *testing.T) {
 	}
 }
 
-func TestInitAsksForNothing(t *testing.T) {
+func TestInitAsksForNothingWithoutALoader(t *testing.T) {
 	t.Parallel()
 
 	if cmd := outsideProject().Init(); cmd != nil {
-		t.Error("Init returned a command; the frame has nothing to load")
+		t.Error("Init returned a command with no registry loader configured")
+	}
+}
+
+type capturingScreen struct{ keylessScreen }
+
+func (capturingScreen) Capturing() bool { return true }
+
+func (s capturingScreen) Update(tea.Msg) (Screen, tea.Cmd) { return s, nil }
+
+func TestAScreenCapturingTextKeepsTheKeys(t *testing.T) {
+	t.Parallel()
+
+	m := outsideProject()
+	m.screens[m.current] = capturingScreen{}
+	before := m.CurrentTitle()
+
+	for _, key := range []string{"4", "1", "q", "?", "tab"} {
+		m = press(t, m, key)
+
+		if m.Quitting() {
+			t.Fatalf("%q quit while a screen was capturing text", key)
+		}
+		if m.HelpOpen() {
+			t.Fatalf("%q opened help while a screen was capturing text", key)
+		}
+		if got := m.CurrentTitle(); got != before {
+			t.Fatalf("%q moved the selection to %q while a screen was capturing text", key, got)
+		}
+	}
+}
+
+func TestCtrlCQuitsWhileAScreenCapturesText(t *testing.T) {
+	t.Parallel()
+
+	m := outsideProject()
+	m.screens[m.current] = capturingScreen{}
+
+	if m = press(t, m, "ctrl+c"); !m.Quitting() {
+		t.Error("ctrl+c did not quit while a screen was capturing text")
 	}
 }
 
@@ -373,6 +425,7 @@ func TestIndexOfAnUnknownTitleFallsBackToTheFirst(t *testing.T) {
 type keylessScreen struct{}
 
 func (keylessScreen) Title() string                      { return "Keyless" }
+func (keylessScreen) Capturing() bool                    { return false }
 func (keylessScreen) Keys() []KeyHelp                    { return nil }
 func (s keylessScreen) Update(tea.Msg) (Screen, tea.Cmd) { return s, nil }
 func (keylessScreen) View(int, int) string               { return "nothing here" }
@@ -468,5 +521,29 @@ func TestTruncate(t *testing.T) {
 		if got := truncate(tc.in, tc.width); got != tc.want {
 			t.Errorf("truncate(%q, %d) = %q, want %q", tc.in, tc.width, got, tc.want)
 		}
+	}
+}
+
+func TestAPlaceholderIgnoresEveryMessage(t *testing.T) {
+	t.Parallel()
+
+	type odd struct{}
+
+	p := projectScreen(false)
+
+	updated, cmd := p.Update(odd{})
+	if cmd != nil {
+		t.Error("a placeholder returned a command")
+	}
+	if updated.Title() != "Project" {
+		t.Errorf("title = %q", updated.Title())
+	}
+
+	updated, cmd = p.Update(keyPress("z"))
+	if cmd != nil {
+		t.Error("a placeholder returned a command for a key press")
+	}
+	if updated.Capturing() {
+		t.Error("a placeholder reports that it captures text")
 	}
 }

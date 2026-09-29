@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -15,6 +16,7 @@ type Options struct {
 	ProjectRoot string
 	Config      config.Config
 	Paths       config.Paths
+	Registry    *RegistryLoader
 }
 
 type Model struct {
@@ -33,7 +35,7 @@ func New(opts Options) Model {
 		opts: opts,
 		screens: []Screen{
 			projectScreen(opts.InProject),
-			registryScreen(),
+			newRegistryScreen(opts.Registry),
 			localScreen(),
 			composerScreen(),
 		},
@@ -61,7 +63,21 @@ func (m Model) indexOf(title string) int {
 	return 0
 }
 
-func (m Model) Init() tea.Cmd { return nil }
+func (m Model) Init() tea.Cmd {
+	if m.opts.Registry == nil {
+		return nil
+	}
+
+	loader := m.opts.Registry
+	loaded := loader.Load(context.Background())
+
+	cmds := []tea.Cmd{func() tea.Msg { return loaded }}
+	if loader.Stale() {
+		cmds = append(cmds, loader.RefreshCmd())
+	}
+
+	return tea.Batch(cmds...)
+}
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -98,17 +114,19 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return moved, nil
 	}
 
-	switch key {
-	case "q":
-		m.quit = true
-		return m, tea.Quit
-	case "?":
-		m.helpOpen = true
-		return m, nil
-	}
+	if !m.screens[m.current].Capturing() {
+		switch key {
+		case "q":
+			m.quit = true
+			return m, tea.Quit
+		case "?":
+			m.helpOpen = true
+			return m, nil
+		}
 
-	if moved, ok := m.selectTab(key); ok {
-		return moved, nil
+		if moved, ok := m.selectTab(key); ok {
+			return moved, nil
+		}
 	}
 
 	updated, cmd := m.screens[m.current].Update(msg)

@@ -63,6 +63,7 @@ type session struct {
 
 type sessionOptions struct {
 	workDir string
+	root    string
 	args    []string
 	env     []string
 }
@@ -74,9 +75,12 @@ func newSession(t *testing.T, opts sessionOptions) *session {
 		t.Fatal(buildErr)
 	}
 
-	root := t.TempDir()
+	root := opts.root
+	if root == "" {
+		root = t.TempDir()
+	}
 	if opts.workDir == "" {
-		opts.workDir = root
+		opts.workDir = t.TempDir()
 	}
 
 	cmd := exec.Command(binaryPath, opts.args...)
@@ -188,6 +192,22 @@ func (s *session) waitFor(text string) {
 	}
 
 	s.t.Fatalf("waited %s for %q to appear; the screen held:\n%s", waitTimeout, text, s.drawn())
+}
+
+func (s *session) waitForAbsence(text string) {
+	s.t.Helper()
+
+	gone := flat(text)
+
+	deadline := time.Now().Add(waitTimeout)
+	for time.Now().Before(deadline) {
+		if !strings.Contains(flat(s.drawn()), gone) {
+			return
+		}
+		time.Sleep(pollEvery)
+	}
+
+	s.t.Fatalf("waited %s for %q to go away; the screen held:\n%s", waitTimeout, text, s.drawn())
 }
 
 func (s *session) waitForExit() error {

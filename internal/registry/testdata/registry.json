@@ -1,0 +1,53 @@
+{
+  "$schema": "https://registry.speclib.org/api/v1/schema.json",
+  "schemas": [
+    {
+      "id": "danielhanold/superspec",
+      "name": "SuperSpec",
+      "description": "Spec-driven workflow wired into Superpowers skills and worktrees.",
+      "artifacts": ["brainstorm", "proposal", "design", "specs", "tasks", "plan", "apply", "verify", "finalize"],
+      "source": {
+        "repo": "https://github.com/danielhanold/superspec",
+        "path": "openspec/schemas/superspec"
+      },
+      "license": "MIT"
+    },
+    {
+      "id": "lukk17/e2e-runbooks",
+      "name": "e2e-runbooks",
+      "description": "Capability-level e2e runbooks with behaviour-only assertions.",
+      "artifacts": ["proposal", "test-spec", "tasks-template", "run"],
+      "source": {
+        "repo": "https://github.com/Lukk17/openspec-schemas",
+        "path": "openspec/schemas/e2e-runbooks",
+        "ref": "v0.2.0"
+      },
+      "requires": { "openspec": ">=1.10" },
+      "license": "MIT",
+      "status": "active",
+      "language": "en"
+    },
+    {
+      "id": "speclib/retired",
+      "name": "retired",
+      "description": "An older workflow kept so its id still resolves to an explanation.",
+      "artifacts": ["proposal", "tasks"],
+      "source": {
+        "repo": "https://github.com/speclib/openspec-retired-schema",
+        "path": "openspec/schemas/retired"
+      },
+      "status": "deprecated",
+      "superseded_by": "speclib/tinychange"
+    },
+    {
+      "id": "speclib/tinychange",
+      "name": "tinychange",
+      "description": "Lean specs to tasks workflow for very small changes.",
+      "artifacts": ["specs", "tasks"],
+      "source": {
+        "repo": "https://github.com/speclib/openspec-tinychange-schema",
+        "path": "openspec/schemas/tinychange"
+      }
+    }
+  ]
+}

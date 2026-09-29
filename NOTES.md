@@ -91,10 +91,31 @@ out to a binary shipped in the flake is the fallback.
 ## 7. Built-in schemas
 
 `openspec schema which --all --json` lists every schema with its resolution
-source, which is where the built-in list comes from. `openspec init` sets
-`schema: spec-driven` in `openspec/config.yaml`, and `spec-driven` is
-deliberately absent from the registry because it is present without being
-installed.
+source, which is where the built-in list comes from. Its output shape:
+
+```json
+[
+  {
+    "name": "spec-driven",
+    "source": "package",
+    "path": "/nix/store/.../lib/openspec/schemas/spec-driven",
+    "shadows": []
+  }
+]
+```
+
+`source` is `package` for a built-in schema, `project` for one in
+`openspec/schemas/`, and `user` for one in the user's data directory. `shadows`
+names the sources this schema hides.
+
+The JSON goes to standard output and the line
+`Note: Schema commands are experimental and may change.` goes to standard
+error, so the adapter reads standard output alone and does not have to strip a
+preamble.
+
+`openspec init` sets `schema: spec-driven` in `openspec/config.yaml`, and
+`spec-driven` is deliberately absent from the registry because it is present
+without being installed.
 
 ## 8. Stores
 
@@ -102,3 +123,23 @@ installed.
 machine. Whether project detection and schema resolution change for a project
 pointing at a store is checked in milestone 05, when the adapter is built. If
 handling it is cheap it is handled; otherwise the limitation is recorded here.
+
+## 9. Where ossm's registry reading differs from the registry's own validation
+
+ossm validates what it needs to read an entry safely and no more: the six
+required fields, `id` shaped `<owner>/<name>`, a non-empty `artifacts`, a known
+`status`, and `superseded_by` only on a deprecated entry.
+
+It does not enforce the 100-character cap on `description`, and it ignores a
+field it does not know.
+
+Both are deliberate. The cap is the registry's gate to apply before an entry is
+merged; a consumer that also refuses it means one bad entry breaks every user
+rather than one pull request. And a registry may add a field before the ossm
+reading it knows about it, so refusing the whole document over an unknown key
+would strand every user until they upgrade.
+
+This is the opposite of what `internal/config` does with `config.yml`, where an
+unknown key is an error. A config file is written by the user in front of you,
+so a typo is worth stopping for. A registry file is written by someone else and
+may be newer than the reader.

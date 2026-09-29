@@ -18,6 +18,8 @@ func (p placeholder) Title() string { return p.title }
 
 func (p placeholder) Keys() []KeyHelp { return p.keys }
 
+func (p placeholder) Capturing() bool { return false }
+
 func (p placeholder) Update(tea.Msg) (Screen, tea.Cmd) { return p, nil }
 
 func (p placeholder) View(width, height int) string {
@@ -53,19 +55,6 @@ func projectScreen(inProject bool) Screen {
 			{Key: "enter", Description: "open the selected schema"},
 			{Key: "s", Description: "set the project default schema"},
 			{Key: "u", Description: "update an installed schema"},
-		},
-	}
-}
-
-func registryScreen() Screen {
-	return placeholder{
-		title:     "Registry",
-		milestone: "02",
-		holds:     "Every schema in the OpenSpec schema registry, merged with the schemas OpenSpec reports as built in, searchable and usable from cache when you are offline.",
-		keys: []KeyHelp{
-			{Key: "enter", Description: "open the selected schema"},
-			{Key: "i", Description: "install into this project"},
-			{Key: "c", Description: "duplicate to a local directory"},
 		},
 	}
 }
