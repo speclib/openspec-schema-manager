@@ -1,0 +1,19 @@
+{
+  "_note": "ILLUSTRATIVE. Replace with the real registry format from openspec-schema-registry.",
+  "schemas": [
+    {
+      "id": "minimalist",
+      "description": "Two artifacts: specs as user stories, then tasks",
+      "source": "https://github.com/example/openspec-schemas",
+      "path": "openspec/schemas/minimalist",
+      "ref": "main"
+    },
+    {
+      "id": "research-first",
+      "description": "Research before proposing",
+      "source": "https://github.com/example/openspec-schemas",
+      "path": "openspec/schemas/research-first",
+      "ref": "a1b2c3d"
+    }
+  ]
+}
