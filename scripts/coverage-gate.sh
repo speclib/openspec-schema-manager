@@ -27,14 +27,17 @@ floor_for() {
     # writers rather than files. main() is the one uncovered function.
     "$module/cmd/ossm")          echo "96.0" ;;
     "$module/internal/compose")  echo "" ;;
-    "$module/internal/config")   echo "" ;;
+    # Pure and fully covered. The floor sits under 100 because
+    # TestAnUnreadableFileIsReported skips when the suite runs as root, which
+    # some CI containers do, and that costs about a point.
+    "$module/internal/config")   echo "98.0" ;;
     "$module/internal/graph")    echo "" ;;
     "$module/internal/openspec") echo "" ;;
     "$module/internal/registry") echo "" ;;
     "$module/internal/schema")   echo "" ;;
     "$module/internal/source")   echo "" ;;
     "$module/internal/tui")      echo "" ;;
-    TOTAL)                       echo "96.0" ;;
+    TOTAL)                       echo "98.0" ;;
     *)                           echo "" ;;
   esac
 }

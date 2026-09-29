@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-09-29
+goal: Every later milestone asks one package where a file belongs instead of
+  composing a path of its own

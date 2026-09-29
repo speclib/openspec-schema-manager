@@ -1,0 +1,23 @@
+# ossm configuration. Copy to $XDG_CONFIG_HOME/ossm/config.yml, or to
+# ~/.config/ossm/config.yml when that variable is unset.
+#
+# Every key below holds its default, so a file identical to this one behaves the
+# same as no file at all. An unknown key is an error rather than a setting that
+# quietly does nothing, so a typo is reported on the next launch.
+
+# Where the registry is fetched from. A file:// URL points at a local copy, and
+# any HTTP address points at a fork or a mirror.
+registry_url: https://registry.speclib.org/api/v1/openspec-schemas.json
+
+# How long a cached registry is used before a fresh copy is fetched in the
+# background. A Go duration: 24h, 30m, 90s. Set 0s to fetch on every launch.
+registry_ttl: 24h
+
+# Directories scanned for schema folders. A schema folder is one holding a
+# schema.yaml. A leading ~/ expands to your home directory.
+schemas_dirs: []
+#   - ~/work/openspec-schemas
+#   - /srv/shared/schemas
+
+# How many opened schema folders the recents list keeps.
+recents_cap: 20
