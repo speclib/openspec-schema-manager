@@ -41,19 +41,31 @@ type registryScreenModel struct {
 	message  string
 	busy     bool
 
-	loader *RegistryLoader
+	loader   *RegistryLoader
+	resolver *Resolver
+	detail   *detailModel
 }
 
-func newRegistryScreen(loader *RegistryLoader) Screen {
-	return &registryScreenModel{loader: loader}
+func newRegistryScreen(loader *RegistryLoader, resolver *Resolver) Screen {
+	return &registryScreenModel{loader: loader, resolver: resolver}
 }
 
 func (r *registryScreenModel) Title() string { return "Registry" }
 
-func (r *registryScreenModel) Capturing() bool { return r.filtering }
+func (r *registryScreenModel) Capturing() bool {
+	if r.detail != nil {
+		return r.detail.Capturing()
+	}
+	return r.filtering
+}
 
 func (r *registryScreenModel) Keys() []KeyHelp {
+	if r.detail != nil {
+		return r.detail.Keys()
+	}
+
 	return []KeyHelp{
+		{Key: "enter", Description: "open the selected schema"},
 		{Key: "up / down", Description: "move the selection"},
 		{Key: "/", Description: "filter over id, name and description"},
 		{Key: "esc", Description: "clear the filter"},
@@ -62,6 +74,19 @@ func (r *registryScreenModel) Keys() []KeyHelp {
 }
 
 func (r *registryScreenModel) Update(msg tea.Msg) (Screen, tea.Cmd) {
+	if r.detail != nil {
+		if key, ok := msg.(tea.KeyPressMsg); ok {
+			switch key.String() {
+			case "esc", "q":
+				r.detail = nil
+				return r, nil
+			}
+		}
+
+		_, cmd := r.detail.Update(msg)
+		return r, cmd
+	}
+
 	switch msg := msg.(type) {
 	case RegistryLoaded:
 		r.rows = msg.Rows
@@ -139,9 +164,22 @@ func (r *registryScreenModel) handleKey(msg tea.KeyPressMsg) (Screen, tea.Cmd) {
 			r.message = "refreshing"
 			return r, r.loader.RefreshCmd()
 		}
+	case "enter":
+		return r.open()
 	}
 
 	return r, nil
+}
+
+func (r *registryScreenModel) open() (Screen, tea.Cmd) {
+	row := r.selectedRow()
+	if row == nil || r.resolver == nil {
+		return r, nil
+	}
+
+	r.detail = newDetail(*row, r.resolver, r.resolver.ASCII)
+
+	return r, r.resolver.ResolveCmd(*row, false)
 }
 
 func (r *registryScreenModel) move(by int) {
@@ -200,6 +238,10 @@ func sameRow(a, b registry.Row) bool {
 }
 
 func (r *registryScreenModel) View(width, height int) string {
+	if r.detail != nil {
+		return r.detail.View(width, height)
+	}
+
 	var b strings.Builder
 
 	b.WriteString(r.header(width))

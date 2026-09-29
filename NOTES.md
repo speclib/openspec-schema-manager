@@ -82,11 +82,24 @@ what to claim on that basis.
 
 ## 6. mermaid-ascii
 
-`github.com/pgavlin/mermaid-ascii` resolves as a Go module at
-`v0.0.0-20260322123205-ab8074a98bef`, with no tagged release. Whether it exports
-an importable rendering package rather than only a `main` is settled in
-milestone 04, before anything depends on it. In process is preferred; shelling
-out to a binary shipped in the flake is the fallback.
+Settled, in process. `github.com/pgavlin/mermaid-ascii` is a Go module with no
+tagged release, and it exports what is needed:
+
+```go
+render.Render(src string, cfg *diagram.Config) (string, error)
+```
+
+`pkg/render` and `pkg/diagram` are importable packages, not a `main`. The
+licence is MIT. No binary is shipped in the flake and nothing is shelled out to.
+
+`diagram.DefaultConfig()` returns a `*Config`, not a `Config`, which is easy to
+get wrong at the call site. `UseAscii` switches between box-drawing characters
+and ASCII, and it is set from whether the environment's locale says UTF-8. That
+is the strongest signal a Bubble Tea model can read without querying the
+terminal mid-render.
+
+The renderer already draws Mermaid's `{{"x"}}` as a hexagon, so the apply-gate
+shape chosen in milestone 03 arrives on screen with nothing further to do.
 
 ## 7. Built-in schemas
 
@@ -171,3 +184,26 @@ Schema parsing is strict, unlike registry parsing: an unknown key is an error.
 A schema is written by the user or fetched from a repository they chose. A key
 ossm silently ignores there is a workflow step that quietly does not happen,
 which is worse than a failed parse.
+
+## 11. Fetching a schema needs git, and nothing else is built
+
+`internal/source` fetches with `git init`, `git remote add`, `git fetch --depth
+1` and `git checkout --detach FETCH_HEAD`, not with `git clone --branch`. Clone
+with a branch fails on a commit SHA, and an entry may pin one.
+
+With no ref, the fetch is `git fetch --depth 1 origin HEAD`, which makes the
+repository resolve its own default branch. This is the case the registry
+already warns about: one seeded repository uses `master`, so computing `main`
+would fail on it.
+
+The briefing allows for fetching raw files when a source is not a git
+repository. Nothing is built for it. Every entry in the registry today is a git
+repository, and a raw-file fetch cannot list a directory without a
+host-specific API, so the fallback would be a GitHub adapter wearing a general
+name. `source.Fetcher` is one interface, so adding one later changes nothing
+above it.
+
+Tests fetch from git repositories built inside the test, including one whose
+default branch is `master`. That exercises the real git commands offline, so the
+suite still makes no network request and the case that breaks a naive
+implementation is covered rather than assumed.

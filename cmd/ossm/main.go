@@ -10,8 +10,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/speclib/openspec-schema-manager/internal/config"
+	"github.com/speclib/openspec-schema-manager/internal/graph"
 	"github.com/speclib/openspec-schema-manager/internal/openspec"
 	"github.com/speclib/openspec-schema-manager/internal/registry"
+	"github.com/speclib/openspec-schema-manager/internal/source"
 	"github.com/speclib/openspec-schema-manager/internal/tui"
 )
 
@@ -83,6 +85,11 @@ func appOptions(opts options) (tui.Options, error) {
 	if root, err := openspec.FindProjectRoot(workDir); err == nil {
 		appOpts.InProject = true
 		appOpts.ProjectRoot = root
+	}
+
+	appOpts.Resolver = &tui.Resolver{
+		Fetcher: source.NewGit(paths.SchemaCache),
+		ASCII:   !graph.UnicodeAvailable(),
 	}
 
 	appOpts.Registry = &tui.RegistryLoader{

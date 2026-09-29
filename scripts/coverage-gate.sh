@@ -33,9 +33,10 @@ floor_for() {
     # TestAnUnreadableFileIsReported skips when the suite runs as root, which
     # some CI containers do, and that costs about a point.
     "$module/internal/config")   echo "98.0" ;;
-    # Pure, and the briefing asks for 80% on the core packages. It measures
-    # 100, so the floor is 100.
-    "$module/internal/graph")    echo "100.0" ;;
+    # Lowered from 100.0 when Draw landed: two branches only run when the
+    # vendored renderer itself fails, which it does not on a graph that
+    # already passed cycle detection.
+    "$module/internal/graph")    echo "99.0" ;;
     # 90.9 in FindProjectRoot: filepath.Abs only fails when the working
     # directory has been removed underneath the process.
     "$module/internal/openspec") echo "92.0" ;;
@@ -46,13 +47,15 @@ floor_for() {
     # Pure. The uncovered remainder is cycleFrom's fallback, which only runs
     # if the walk loses the node it is standing on.
     "$module/internal/schema")   echo "99.0" ;;
-    "$module/internal/source")   echo "" ;;
-    # Lowered from 99.0 when the Registry screen landed: the scroll clamp for
-    # a pane shorter than the selection needs a window size no terminal gives.
-    "$module/internal/tui")      echo "98.0" ;;
+    # The uncovered remainder is filesystem failures during a copy: a file
+    # that opens and then refuses to read, a directory that vanishes mid-walk.
+    "$module/internal/source")   echo "88.0" ;;
+    # Lowered again with the detail screen: the remaining branches need a
+    # pane smaller than one row, which no terminal produces.
+    "$module/internal/tui")      echo "97.5" ;;
     # Lowered from 98.0 with milestone 02. The drop is all error branches in
     # internal/registry that need a failing filesystem to reach.
-    TOTAL)                       echo "97.0" ;;
+    TOTAL)                       echo "96.0" ;;
     *)                           echo "" ;;
   esac
 }

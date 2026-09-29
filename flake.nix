@@ -44,7 +44,7 @@
             pname = "ossm-gate";
             inherit version;
             src = ./.;
-            vendorHash = "sha256-Eqdr8gBEStdsx7Ht97P7IzBacvmrE/Fcowm/LEYHVkg=";
+            vendorHash = "sha256-2XOUx005bGPWKgqbE/XXccVnwYmp4bAX3S1gXwVvvDo=";
 
             nativeBuildInputs = [ pkgs.bash pkgs.git ];
 

@@ -74,7 +74,7 @@ func seed(t *testing.T, l *RegistryLoader, body string, age time.Duration) {
 func screenWith(t *testing.T, l *RegistryLoader) *registryScreenModel {
 	t.Helper()
 
-	s := newRegistryScreen(l)
+	s := newRegistryScreen(l, nil)
 
 	updated, _ := s.Update(l.Load(context.Background()))
 
@@ -569,7 +569,7 @@ func TestPad(t *testing.T) {
 func TestTheScreenReportsItsKeys(t *testing.T) {
 	t.Parallel()
 
-	s := newRegistryScreen(nil)
+	s := newRegistryScreen(nil, nil)
 
 	var found []string
 	for _, k := range s.Keys() {
@@ -595,7 +595,7 @@ func contains(haystack []string, needle string) bool {
 func TestRefreshDoesNothingWithoutALoader(t *testing.T) {
 	t.Parallel()
 
-	s, cmd := key(newRegistryScreen(nil), "r")
+	s, cmd := key(newRegistryScreen(nil, nil), "r")
 	if cmd != nil {
 		t.Error("r produced a command with no loader")
 	}
@@ -609,7 +609,7 @@ func TestAnUnknownMessageIsIgnored(t *testing.T) {
 
 	type odd struct{}
 
-	s, cmd := newRegistryScreen(nil).Update(odd{})
+	s, cmd := newRegistryScreen(nil, nil).Update(odd{})
 	if cmd != nil {
 		t.Error("an unknown message produced a command")
 	}
@@ -703,5 +703,133 @@ func TestARefreshIsNotOverwrittenByTheCacheRead(t *testing.T) {
 	}
 	if strings.Contains(got, "never fetched") {
 		t.Errorf("the refresh was overwritten by the cache read:\n%s", got)
+	}
+}
+
+func TestEnterOpensAndEscReturnsWithTheSameRowSelected(t *testing.T) {
+	t.Parallel()
+
+	l := newLoader(t, fixtureRegistry, nil)
+	seed(t, l, fixtureRegistry, time.Hour)
+
+	fetcher := &fakeFetcher{dir: schemaDir(t, "chain.yaml")}
+	s := newRegistryScreen(l, &Resolver{Fetcher: fetcher, ASCII: true})
+	_, _ = s.Update(l.Load(context.Background()))
+
+	model := s.(*registryScreenModel)
+	_, _ = key(s, "down")
+	before := model.selectedRow().Name
+
+	_, cmd := key(s, "enter")
+	if cmd == nil {
+		t.Fatal("enter produced no command")
+	}
+	if model.detail == nil {
+		t.Fatal("enter did not open the detail")
+	}
+
+	_, _ = s.Update(cmd())
+
+	if got := view(s); !strings.Contains(got, "apply gate") {
+		t.Errorf("the detail is not drawn:\n%s", got)
+	}
+
+	_, _ = key(s, "esc")
+
+	if model.detail != nil {
+		t.Fatal("esc did not close the detail")
+	}
+	if got := model.selectedRow().Name; got != before {
+		t.Errorf("the selection moved from %q to %q", before, got)
+	}
+}
+
+func TestQClosesTheDetailRatherThanQuitting(t *testing.T) {
+	t.Parallel()
+
+	l := newLoader(t, fixtureRegistry, nil)
+	seed(t, l, fixtureRegistry, time.Hour)
+
+	fetcher := &fakeFetcher{dir: schemaDir(t, "chain.yaml")}
+	s := newRegistryScreen(l, &Resolver{Fetcher: fetcher, ASCII: true})
+	_, _ = s.Update(l.Load(context.Background()))
+
+	_, cmd := key(s, "enter")
+	_, _ = s.Update(cmd())
+
+	_, _ = key(s, "q")
+
+	if s.(*registryScreenModel).detail != nil {
+		t.Error("q did not close the detail")
+	}
+	if got := view(s); !strings.Contains(got, "schemas ·") {
+		t.Errorf("the list did not return:\n%s", got)
+	}
+}
+
+func TestEnterOnAnEmptyListDoesNothing(t *testing.T) {
+	t.Parallel()
+
+	s := newRegistryScreen(nil, &Resolver{ASCII: true})
+
+	if _, cmd := key(s, "enter"); cmd != nil {
+		t.Error("enter on an empty list produced a command")
+	}
+	if s.(*registryScreenModel).detail != nil {
+		t.Error("enter on an empty list opened a detail")
+	}
+}
+
+func TestEnterWithNoResolverDoesNothing(t *testing.T) {
+	t.Parallel()
+
+	l := newLoader(t, fixtureRegistry, nil)
+	seed(t, l, fixtureRegistry, time.Hour)
+
+	s := newRegistryScreen(l, nil)
+	_, _ = s.Update(l.Load(context.Background()))
+
+	if _, cmd := key(s, "enter"); cmd != nil {
+		t.Error("enter produced a command with no resolver")
+	}
+}
+
+func TestTheDetailTakesTheKeysAndTheHelp(t *testing.T) {
+	t.Parallel()
+
+	l := newLoader(t, fixtureRegistry, nil)
+	seed(t, l, fixtureRegistry, time.Hour)
+
+	fetcher := &fakeFetcher{dir: schemaDir(t, "chain.yaml")}
+	s := newRegistryScreen(l, &Resolver{Fetcher: fetcher, ASCII: true})
+	_, _ = s.Update(l.Load(context.Background()))
+
+	_, cmd := key(s, "enter")
+	_, _ = s.Update(cmd())
+
+	var keys []string
+	for _, k := range s.Keys() {
+		keys = append(keys, k.Key)
+	}
+	if !contains(keys, "d") {
+		t.Errorf("the help does not follow into the detail: %v", keys)
+	}
+
+	_, _ = key(s, "d")
+	if got := view(s); !strings.Contains(got, "d closes the diagram") {
+		t.Errorf("the detail did not take the d key:\n%s", got)
+	}
+}
+
+func TestTheListKeysMentionEnter(t *testing.T) {
+	t.Parallel()
+
+	var keys []string
+	for _, k := range newRegistryScreen(nil, nil).Keys() {
+		keys = append(keys, k.Key)
+	}
+
+	if !contains(keys, "enter") {
+		t.Errorf("the list does not report enter: %v", keys)
 	}
 }

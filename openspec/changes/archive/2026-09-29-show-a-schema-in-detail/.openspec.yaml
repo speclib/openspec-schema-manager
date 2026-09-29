@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-09-29
+goal: A user can open any schema, read its workflow, and see the shape of it as
+  a diagram, working offline once it has been fetched

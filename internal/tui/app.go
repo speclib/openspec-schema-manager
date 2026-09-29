@@ -17,6 +17,7 @@ type Options struct {
 	Config      config.Config
 	Paths       config.Paths
 	Registry    *RegistryLoader
+	Resolver    *Resolver
 }
 
 type Model struct {
@@ -35,7 +36,7 @@ func New(opts Options) Model {
 		opts: opts,
 		screens: []Screen{
 			projectScreen(opts.InProject),
-			newRegistryScreen(opts.Registry),
+			newRegistryScreen(opts.Registry, opts.Resolver),
 			localScreen(),
 			composerScreen(),
 		},
