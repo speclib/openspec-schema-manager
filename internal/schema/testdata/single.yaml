@@ -3,6 +3,7 @@ version: 1
 description: One artifact and nothing else
 artifacts:
   - id: tasks
+    description: what tasks produces
     generates: tasks.md
     template: tasks.md
 apply:

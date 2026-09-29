@@ -44,15 +44,19 @@ type registryScreenModel struct {
 	loader   *RegistryLoader
 	resolver *Resolver
 	detail   *detailModel
+	install  *installFlow
 }
 
-func newRegistryScreen(loader *RegistryLoader, resolver *Resolver) Screen {
-	return &registryScreenModel{loader: loader, resolver: resolver}
+func newRegistryScreen(loader *RegistryLoader, resolver *Resolver, installer *Installer) Screen {
+	return &registryScreenModel{loader: loader, resolver: resolver, install: newInstallFlow(installer)}
 }
 
 func (r *registryScreenModel) Title() string { return "Registry" }
 
 func (r *registryScreenModel) Capturing() bool {
+	if r.install != nil && r.install.active() {
+		return true
+	}
 	if r.detail != nil {
 		return r.detail.Capturing()
 	}
@@ -60,12 +64,21 @@ func (r *registryScreenModel) Capturing() bool {
 }
 
 func (r *registryScreenModel) Keys() []KeyHelp {
+	if r.install != nil && r.install.active() {
+		return []KeyHelp{
+			{Key: "y", Description: "confirm the install"},
+			{Key: "o", Description: "overwrite what is already there"},
+			{Key: "n / esc", Description: "cancel"},
+		}
+	}
+
 	if r.detail != nil {
 		return r.detail.Keys()
 	}
 
 	return []KeyHelp{
 		{Key: "enter", Description: "open the selected schema"},
+		{Key: "i", Description: "install into this project"},
 		{Key: "up / down", Description: "move the selection"},
 		{Key: "/", Description: "filter over id, name and description"},
 		{Key: "esc", Description: "clear the filter"},
@@ -74,6 +87,15 @@ func (r *registryScreenModel) Keys() []KeyHelp {
 }
 
 func (r *registryScreenModel) Update(msg tea.Msg) (Screen, tea.Cmd) {
+	if r.install != nil {
+		if _, prepared := msg.(InstallPrepared); prepared || r.install.active() {
+			return r, r.install.Update(msg)
+		}
+		if _, finished := msg.(InstallFinished); finished {
+			return r, r.install.Update(msg)
+		}
+	}
+
 	if r.detail != nil {
 		if key, ok := msg.(tea.KeyPressMsg); ok {
 			switch key.String() {
@@ -166,9 +188,25 @@ func (r *registryScreenModel) handleKey(msg tea.KeyPressMsg) (Screen, tea.Cmd) {
 		}
 	case "enter":
 		return r.open()
+	case "i":
+		return r.startInstall()
 	}
 
 	return r, nil
+}
+
+func (r *registryScreenModel) startInstall() (Screen, tea.Cmd) {
+	row := r.selectedRow()
+	if row == nil || r.install == nil {
+		return r, nil
+	}
+
+	cmd, refusal := r.install.start(*row)
+	if refusal != "" {
+		r.message = refusal
+	}
+
+	return r, cmd
 }
 
 func (r *registryScreenModel) open() (Screen, tea.Cmd) {
@@ -238,6 +276,10 @@ func sameRow(a, b registry.Row) bool {
 }
 
 func (r *registryScreenModel) View(width, height int) string {
+	if r.install != nil && r.install.active() {
+		return r.install.View(width)
+	}
+
 	if r.detail != nil {
 		return r.detail.View(width, height)
 	}

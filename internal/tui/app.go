@@ -18,6 +18,8 @@ type Options struct {
 	Paths       config.Paths
 	Registry    *RegistryLoader
 	Resolver    *Resolver
+	Installer   *Installer
+	ProjectRead *ProjectReader
 }
 
 type Model struct {
@@ -35,8 +37,8 @@ func New(opts Options) Model {
 	m := Model{
 		opts: opts,
 		screens: []Screen{
-			projectScreen(opts.InProject),
-			newRegistryScreen(opts.Registry, opts.Resolver),
+			newProjectScreen(opts.InProject, opts.ProjectRoot, opts.ProjectRead, opts.Resolver),
+			newRegistryScreen(opts.Registry, opts.Resolver, opts.Installer),
 			localScreen(),
 			composerScreen(),
 		},
@@ -74,11 +76,20 @@ func (m Model) indexOf(title string) int {
 // batching it alongside the fetch let a fast fetch be overwritten by the stale
 // read that started before it.
 func (m Model) Init() tea.Cmd {
-	if m.opts.Registry == nil || !m.opts.Registry.Stale() {
+	var cmds []tea.Cmd
+
+	if m.opts.Registry != nil && m.opts.Registry.Stale() {
+		cmds = append(cmds, m.opts.Registry.RefreshCmd())
+	}
+	if m.opts.ProjectRead != nil && m.opts.InProject {
+		cmds = append(cmds, m.opts.ProjectRead.ReadCmd())
+	}
+
+	if len(cmds) == 0 {
 		return nil
 	}
 
-	return m.opts.Registry.RefreshCmd()
+	return tea.Batch(cmds...)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -90,6 +101,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
+	}
+
+	if _, installed := msg.(InstallFinished); installed {
+		var cmds []tea.Cmd
+		for i, screen := range m.screens {
+			updated, cmd := screen.Update(msg)
+			m.screens[i] = updated
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
+		return m, tea.Batch(cmds...)
 	}
 
 	updated, cmd := m.screens[m.current].Update(msg)

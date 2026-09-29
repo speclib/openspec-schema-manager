@@ -117,6 +117,13 @@ func validate(s Schema, dir string) Findings {
 		if strings.TrimSpace(a.Template) == "" {
 			warn(a.ID, "it declares no template, so nothing seeds the file it generates")
 		}
+
+		// OpenSpec 1.10.0 rejects an artifact with no description. The
+		// briefing calls the field optional; the CLI is the authority on what
+		// it will accept, and a schema it rejects cannot be installed.
+		if strings.TrimSpace(a.Description) == "" {
+			fatal(a.ID, "it declares no description; OpenSpec rejects a schema whose artifact has none")
+		}
 	}
 
 	findings = append(findings, cycleFindings(s, known)...)

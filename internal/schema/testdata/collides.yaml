@@ -3,9 +3,11 @@ version: 1
 description: Two artifacts writing the same file
 artifacts:
   - id: specs
+    description: what specs produces
     generates: notes.md
     template: spec.md
   - id: tasks
+    description: what tasks produces
     generates: notes.md
     template: tasks.md
     requires: [specs]

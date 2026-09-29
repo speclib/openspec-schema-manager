@@ -3,6 +3,7 @@ version: 1
 description: An artifact requiring itself
 artifacts:
   - id: tasks
+    description: what tasks produces
     generates: tasks.md
     template: tasks.md
     requires: [tasks]

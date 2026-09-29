@@ -3,13 +3,16 @@ version: 1
 description: Ids that are not valid Mermaid identifiers
 artifacts:
   - id: "first step"
+    description: what first step produces
     generates: one.md
     template: one.md
   - id: 'say "hi"'
+    description: what the greeting artifact produces
     generates: two.md
     template: two.md
     requires: ["first step"]
   - id: "a[b];c"
+    description: what a[b];c produces
     generates: three.md
     template: three.md
     requires: ['say "hi"']

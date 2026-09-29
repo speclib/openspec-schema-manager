@@ -31,8 +31,31 @@ func (s ResolvedSchema) BuiltIn() bool {
 	return s.Source == SourcePackage
 }
 
+type Change struct {
+	Name           string `json:"name"`
+	CompletedTasks int    `json:"completedTasks"`
+	TotalTasks     int    `json:"totalTasks"`
+	Status         string `json:"status"`
+}
+
+type ValidationIssue struct {
+	Message string `json:"message"`
+	Path    string `json:"path"`
+	Level   string `json:"level"`
+}
+
+type Validation struct {
+	Name   string            `json:"name"`
+	Path   string            `json:"path"`
+	Valid  bool              `json:"valid"`
+	Issues []ValidationIssue `json:"issues"`
+}
+
 type CLI interface {
 	Schemas(ctx context.Context, dir string) ([]ResolvedSchema, error)
+	Changes(ctx context.Context, dir string) ([]Change, error)
+	ChangeSchema(ctx context.Context, dir, change string) (string, error)
+	ValidateSchema(ctx context.Context, dir, name string) (Validation, error)
 }
 
 type Exec struct {
@@ -75,7 +98,7 @@ func (e Exec) run(ctx context.Context, dir string, args ...string) ([]byte, erro
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("openspec %s: %w: %s", args[0], err, bytes.TrimSpace(stderr.Bytes()))
+		return stdout.Bytes(), fmt.Errorf("openspec %s: %w: %s", args[0], err, bytes.TrimSpace(stderr.Bytes()))
 	}
 
 	return stdout.Bytes(), nil
@@ -93,4 +116,56 @@ func (e Exec) Schemas(ctx context.Context, dir string) ([]ResolvedSchema, error)
 	}
 
 	return schemas, nil
+}
+
+func (e Exec) Changes(ctx context.Context, dir string) ([]Change, error) {
+	out, err := e.run(ctx, dir, "list", "--json")
+	if err != nil {
+		return nil, err
+	}
+
+	var listed struct {
+		Changes []Change `json:"changes"`
+	}
+	if err := json.Unmarshal(out, &listed); err != nil {
+		return nil, fmt.Errorf("reading openspec list output: %w", err)
+	}
+
+	return listed.Changes, nil
+}
+
+func (e Exec) ChangeSchema(ctx context.Context, dir, change string) (string, error) {
+	out, err := e.run(ctx, dir, "status", "--change", change, "--json")
+	if err != nil {
+		return "", err
+	}
+
+	var status struct {
+		SchemaName string `json:"schemaName"`
+	}
+	if err := json.Unmarshal(out, &status); err != nil {
+		return "", fmt.Errorf("reading openspec status output: %w", err)
+	}
+
+	return status.SchemaName, nil
+}
+
+func (e Exec) ValidateSchema(ctx context.Context, dir, name string) (Validation, error) {
+	out, err := e.run(ctx, dir, "schema", "validate", name, "--json")
+
+	// A schema OpenSpec rejects makes the command exit non-zero while still
+	// writing the report. The report is the answer; the exit status alone is
+	// not, so it is only an error when nothing parseable came back.
+	if len(out) > 0 {
+		var v Validation
+		if jsonErr := json.Unmarshal(out, &v); jsonErr == nil {
+			return v, nil
+		}
+	}
+
+	if err != nil {
+		return Validation{}, err
+	}
+
+	return Validation{}, fmt.Errorf("reading openspec schema validate output for %s", name)
 }

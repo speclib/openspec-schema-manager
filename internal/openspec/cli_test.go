@@ -175,3 +175,140 @@ func TestTheFakeCanFail(t *testing.T) {
 		t.Errorf("error = %v, want ErrNotInstalled", err)
 	}
 }
+
+func TestChangesReadsTheCLIOutput(t *testing.T) {
+	stubBinary(t, `cat <<'JSON'
+{"changes":[{"name":"add-auth","completedTasks":3,"totalTasks":7,"status":"in-progress"},{"name":"fix-export","completedTasks":0,"totalTasks":4,"status":"no-tasks"}],"root":{"path":"/p"}}
+JSON
+`)
+
+	got, err := NewExec().Changes(t.Context(), t.TempDir())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %d changes, want 2", len(got))
+	}
+	if got[0].Name != "add-auth" || got[0].CompletedTasks != 3 || got[0].TotalTasks != 7 {
+		t.Errorf("the first change reads %+v", got[0])
+	}
+}
+
+func TestChangesOnAProjectWithNone(t *testing.T) {
+	stubBinary(t, `echo '{"changes":[],"root":{"path":"/p"}}'`)
+
+	got, err := NewExec().Changes(t.Context(), t.TempDir())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("got %d changes, want none", len(got))
+	}
+}
+
+func TestChangesReportsOutputItCannotParse(t *testing.T) {
+	stubBinary(t, `echo 'not json'`)
+
+	if _, err := NewExec().Changes(t.Context(), t.TempDir()); err == nil {
+		t.Fatal("expected an error for output that is not JSON")
+	}
+}
+
+func TestChangesReportsAFailingCommand(t *testing.T) {
+	stubBinary(t, "echo 'broke' >&2\nexit 2\n")
+
+	_, err := NewExec().Changes(t.Context(), t.TempDir())
+	if err == nil {
+		t.Fatal("expected an error for a failing command")
+	}
+	if !strings.Contains(err.Error(), "broke") {
+		t.Errorf("error %q does not carry what the CLI said", err)
+	}
+}
+
+func TestChangeSchema(t *testing.T) {
+	stubBinary(t, `echo '{"changeName":"add-auth","schemaName":"minimalist","planningHome":{"defaultSchema":"spec-driven"}}'`)
+
+	got, err := NewExec().ChangeSchema(t.Context(), t.TempDir(), "add-auth")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "minimalist" {
+		t.Errorf("schema = %q, want minimalist", got)
+	}
+}
+
+func TestChangeSchemaReportsWhatItCannotRead(t *testing.T) {
+	stubBinary(t, `echo 'not json'`)
+
+	if _, err := NewExec().ChangeSchema(t.Context(), t.TempDir(), "add-auth"); err == nil {
+		t.Fatal("expected an error for output that is not JSON")
+	}
+}
+
+func TestValidateSchemaReadsAPassingReport(t *testing.T) {
+	stubBinary(t, `echo '{"name":"minimalist","path":"/p","valid":true,"issues":[]}'`)
+
+	got, err := NewExec().ValidateSchema(t.Context(), t.TempDir(), "minimalist")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !got.Valid {
+		t.Error("a passing report reads as invalid")
+	}
+}
+
+func TestValidateSchemaReadsAFailingReportDespiteTheExitStatus(t *testing.T) {
+	stubBinary(t, `
+echo '{"name":"broken","path":"/p","valid":false,"issues":[{"message":"template missing","level":"error"}]}'
+exit 1
+`)
+
+	got, err := NewExec().ValidateSchema(t.Context(), t.TempDir(), "broken")
+	if err != nil {
+		t.Fatalf("a failing validation was treated as an error rather than a report: %v", err)
+	}
+	if got.Valid {
+		t.Error("a failing report reads as valid")
+	}
+	if len(got.Issues) != 1 || got.Issues[0].Message != "template missing" {
+		t.Errorf("issues = %+v", got.Issues)
+	}
+}
+
+func TestValidateSchemaReportsACommandThatSaidNothing(t *testing.T) {
+	stubBinary(t, "echo 'broke' >&2\nexit 2\n")
+
+	if _, err := NewExec().ValidateSchema(t.Context(), t.TempDir(), "x"); err == nil {
+		t.Fatal("expected an error when the command failed and wrote no report")
+	}
+}
+
+func TestValidateSchemaReportsUnparseableOutput(t *testing.T) {
+	stubBinary(t, `echo 'not json'`)
+
+	if _, err := NewExec().ValidateSchema(t.Context(), t.TempDir(), "x"); err == nil {
+		t.Fatal("expected an error for output that is not a report")
+	}
+}
+
+func TestChangeSchemaReportsAFailingCommand(t *testing.T) {
+	stubBinary(t, "echo 'broke' >&2\nexit 2\n")
+
+	if _, err := NewExec().ChangeSchema(t.Context(), t.TempDir(), "add-auth"); err == nil {
+		t.Fatal("expected an error for a failing command")
+	}
+}
+
+func TestTheFakeValidationCanFail(t *testing.T) {
+	t.Parallel()
+
+	fake := &Fake{ValidateErr: errors.New("no")}
+
+	if _, err := fake.ValidateSchema(t.Context(), "/p", "x"); err == nil {
+		t.Fatal("the fake did not fail")
+	}
+	if len(fake.ValidateCalls) != 1 {
+		t.Errorf("the fake recorded %v", fake.ValidateCalls)
+	}
+}

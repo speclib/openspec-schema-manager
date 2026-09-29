@@ -74,7 +74,7 @@ func seed(t *testing.T, l *RegistryLoader, body string, age time.Duration) {
 func screenWith(t *testing.T, l *RegistryLoader) *registryScreenModel {
 	t.Helper()
 
-	s := newRegistryScreen(l, nil)
+	s := newRegistryScreen(l, nil, nil)
 
 	updated, _ := s.Update(l.Load(context.Background()))
 
@@ -569,7 +569,7 @@ func TestPad(t *testing.T) {
 func TestTheScreenReportsItsKeys(t *testing.T) {
 	t.Parallel()
 
-	s := newRegistryScreen(nil, nil)
+	s := newRegistryScreen(nil, nil, nil)
 
 	var found []string
 	for _, k := range s.Keys() {
@@ -595,7 +595,7 @@ func contains(haystack []string, needle string) bool {
 func TestRefreshDoesNothingWithoutALoader(t *testing.T) {
 	t.Parallel()
 
-	s, cmd := key(newRegistryScreen(nil, nil), "r")
+	s, cmd := key(newRegistryScreen(nil, nil, nil), "r")
 	if cmd != nil {
 		t.Error("r produced a command with no loader")
 	}
@@ -609,7 +609,7 @@ func TestAnUnknownMessageIsIgnored(t *testing.T) {
 
 	type odd struct{}
 
-	s, cmd := newRegistryScreen(nil, nil).Update(odd{})
+	s, cmd := newRegistryScreen(nil, nil, nil).Update(odd{})
 	if cmd != nil {
 		t.Error("an unknown message produced a command")
 	}
@@ -713,7 +713,7 @@ func TestEnterOpensAndEscReturnsWithTheSameRowSelected(t *testing.T) {
 	seed(t, l, fixtureRegistry, time.Hour)
 
 	fetcher := &fakeFetcher{dir: schemaDir(t, "chain.yaml")}
-	s := newRegistryScreen(l, &Resolver{Fetcher: fetcher, ASCII: true})
+	s := newRegistryScreen(l, &Resolver{Fetcher: fetcher, ASCII: true}, nil)
 	_, _ = s.Update(l.Load(context.Background()))
 
 	model := s.(*registryScreenModel)
@@ -751,7 +751,7 @@ func TestQClosesTheDetailRatherThanQuitting(t *testing.T) {
 	seed(t, l, fixtureRegistry, time.Hour)
 
 	fetcher := &fakeFetcher{dir: schemaDir(t, "chain.yaml")}
-	s := newRegistryScreen(l, &Resolver{Fetcher: fetcher, ASCII: true})
+	s := newRegistryScreen(l, &Resolver{Fetcher: fetcher, ASCII: true}, nil)
 	_, _ = s.Update(l.Load(context.Background()))
 
 	_, cmd := key(s, "enter")
@@ -770,7 +770,7 @@ func TestQClosesTheDetailRatherThanQuitting(t *testing.T) {
 func TestEnterOnAnEmptyListDoesNothing(t *testing.T) {
 	t.Parallel()
 
-	s := newRegistryScreen(nil, &Resolver{ASCII: true})
+	s := newRegistryScreen(nil, &Resolver{ASCII: true}, nil)
 
 	if _, cmd := key(s, "enter"); cmd != nil {
 		t.Error("enter on an empty list produced a command")
@@ -786,7 +786,7 @@ func TestEnterWithNoResolverDoesNothing(t *testing.T) {
 	l := newLoader(t, fixtureRegistry, nil)
 	seed(t, l, fixtureRegistry, time.Hour)
 
-	s := newRegistryScreen(l, nil)
+	s := newRegistryScreen(l, nil, nil)
 	_, _ = s.Update(l.Load(context.Background()))
 
 	if _, cmd := key(s, "enter"); cmd != nil {
@@ -801,7 +801,7 @@ func TestTheDetailTakesTheKeysAndTheHelp(t *testing.T) {
 	seed(t, l, fixtureRegistry, time.Hour)
 
 	fetcher := &fakeFetcher{dir: schemaDir(t, "chain.yaml")}
-	s := newRegistryScreen(l, &Resolver{Fetcher: fetcher, ASCII: true})
+	s := newRegistryScreen(l, &Resolver{Fetcher: fetcher, ASCII: true}, nil)
 	_, _ = s.Update(l.Load(context.Background()))
 
 	_, cmd := key(s, "enter")
@@ -825,7 +825,7 @@ func TestTheListKeysMentionEnter(t *testing.T) {
 	t.Parallel()
 
 	var keys []string
-	for _, k := range newRegistryScreen(nil, nil).Keys() {
+	for _, k := range newRegistryScreen(nil, nil, nil).Keys() {
 		keys = append(keys, k.Key)
 	}
 

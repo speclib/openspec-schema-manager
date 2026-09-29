@@ -20,15 +20,15 @@ func TestStartingOutsideAProjectOpensOnRegistry(t *testing.T) {
 	s.waitFor("Registry ·")
 
 	s.send("1")
-	s.waitFor("Not in an OpenSpec project")
-	s.waitFor("installing needs a project")
+	s.waitFor("There is no OpenSpec project here")
+	s.waitFor("installing one needs a project")
 }
 
 func TestStartingInsideAProjectOpensOnProject(t *testing.T) {
 	s := newSession(t, sessionOptions{workDir: openSpecProject(t)})
 
 	s.waitFor("demo-app")
-	s.waitFor("Built in milestone 05")
+	s.waitFor("default schema")
 }
 
 func TestTabMovesToTheNextTabAndWraps(t *testing.T) {
@@ -43,7 +43,7 @@ func TestTabMovesToTheNextTabAndWraps(t *testing.T) {
 	s.waitFor("Built in milestone 07")
 
 	s.send("\t")
-	s.waitFor("Built in milestone 05")
+	s.waitFor("There is no OpenSpec project here")
 
 	s.send("\t")
 	s.waitFor("Registry ·")
@@ -58,7 +58,7 @@ func TestATabIsReachableByNumber(t *testing.T) {
 	s.waitFor("Built in milestone 07")
 
 	s.send("1")
-	s.waitFor("Built in milestone 05")
+	s.waitFor("There is no OpenSpec project here")
 }
 
 func TestHelpOpensAndClosesWithoutQuitting(t *testing.T) {
@@ -299,9 +299,11 @@ description: Lightweight schema for well-scoped, low-risk changes
 artifacts:
   - id: specs
     generates: specs/**/*.md
+    description: Specifications as user stories
     template: specs/spec.md
   - id: tasks
     generates: tasks.md
+    description: Implementation checklist derived from the specs
     template: tasks.md
     requires: [specs]
 apply:
@@ -413,4 +415,127 @@ func TestABuiltInSchemaOpensWithoutFetching(t *testing.T) {
 	s.send("\r")
 	s.waitFor("apply gate")
 	s.waitFor("proposal")
+}
+
+func openSpecProjectWithCLI(t *testing.T) string {
+	t.Helper()
+
+	if _, err := exec.LookPath("openspec"); err != nil {
+		t.Skip("the openspec CLI is not on PATH")
+	}
+
+	dir := filepath.Join(t.TempDir(), "demo-app")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("creating the project: %v", err)
+	}
+
+	cmd := exec.Command("openspec", "init", "--tools", "none", "--no-animation")
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "HOME="+t.TempDir())
+
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Skipf("openspec init failed: %v\n%s", err, out)
+	}
+
+	return dir
+}
+
+func TestTheProjectTabShowsTheProject(t *testing.T) {
+	root := t.TempDir()
+	writeConfig(t, root, "file://"+filepath.Join(root, "absent.json"))
+
+	project := openSpecProjectWithCLI(t)
+
+	s := newSession(t, sessionOptions{root: root, workDir: project})
+
+	s.waitFor("demo-app")
+	s.waitFor("default schema: spec-driven")
+	s.waitFor("Schemas available")
+	s.waitFor("spec-driven")
+	s.waitFor("built-in")
+	s.waitFor("no changes yet")
+}
+
+func TestInstallingASchemaIsSeenByOpenSpec(t *testing.T) {
+	root := t.TempDir()
+	repo := schemaRepo(t)
+	writeConfig(t, root, writeRegistryPointingAt(t, root, repo))
+
+	project := openSpecProjectWithCLI(t)
+
+	s := newSession(t, sessionOptions{root: root, workDir: project})
+
+	s.send("2")
+	s.waitFor("minimalist")
+	s.send("g")
+	s.send("i")
+
+	s.waitFor("Install minimalist")
+	s.waitFor("openspec/schemas/minimalist")
+	s.waitFor("y write these files")
+
+	s.send("y")
+	s.waitFor("minimalist installed")
+	s.waitFor("OpenSpec validated it")
+
+	s.send("\r")
+	s.send("q")
+	_ = s.waitForExit()
+
+	which := exec.Command("openspec", "schema", "which", "minimalist", "--json")
+	which.Dir = project
+	which.Env = append(os.Environ(), "HOME="+t.TempDir())
+
+	out, err := which.Output()
+	if err != nil {
+		t.Fatalf("openspec schema which: %v", err)
+	}
+	if !strings.Contains(string(out), `"source": "project"`) {
+		t.Errorf("OpenSpec does not resolve the installed schema from the project:\n%s", out)
+	}
+
+	change := exec.Command("openspec", "new", "change", "try-it", "--schema", "minimalist", "--json")
+	change.Dir = project
+	change.Env = append(os.Environ(), "HOME="+t.TempDir())
+
+	if out, err := change.CombinedOutput(); err != nil {
+		t.Fatalf("a change could not be created with the installed schema: %v\n%s", err, out)
+	}
+}
+
+func TestDecliningAnInstallLeavesTheProjectUntouched(t *testing.T) {
+	root := t.TempDir()
+	repo := schemaRepo(t)
+	writeConfig(t, root, writeRegistryPointingAt(t, root, repo))
+
+	project := openSpecProjectWithCLI(t)
+
+	s := newSession(t, sessionOptions{root: root, workDir: project})
+
+	s.send("2")
+	s.waitFor("minimalist")
+	s.send("g")
+	s.send("i")
+	s.waitFor("y write these files")
+
+	s.send("n")
+	s.waitFor("Registry ·")
+
+	if _, err := os.Stat(filepath.Join(project, "openspec", "schemas", "minimalist")); err == nil {
+		t.Error("declining wrote the schema anyway")
+	}
+}
+
+func TestInstallingOutsideAProjectIsRefused(t *testing.T) {
+	root := t.TempDir()
+	repo := schemaRepo(t)
+	writeConfig(t, root, writeRegistryPointingAt(t, root, repo))
+
+	s := newSession(t, sessionOptions{root: root})
+
+	s.waitFor("minimalist")
+	s.send("g")
+	s.send("i")
+
+	s.waitFor("needs an OpenSpec project")
 }

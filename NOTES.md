@@ -61,11 +61,35 @@ already resolve rather than a repository URL.
 
 ## 4. Install mechanism
 
+Settled, and confirmed end to end before anything was built on it.
+
 Because no install-from-source command exists, ossm fetches the source folder
 itself, writes it to `openspec/schemas/<name>/`, and then runs
 `openspec schema validate <name> --json`. All of this lives behind the adapter
 in `internal/openspec`, so it can be replaced by a single command if OpenSpec
 grows one.
+
+The route was run by hand first: copy a schema into
+`openspec/schemas/minimalist/`, then
+
+- `openspec schema validate minimalist --json` answers `"valid": true`
+- `openspec schema which minimalist --json` answers `"source": "project"`
+- `openspec new change x --schema minimalist` succeeds
+
+An end to end test now asserts the same three things against a schema ossm
+installed itself.
+
+Two details the adapter has to know:
+
+`openspec schema validate` exits non-zero when a schema is invalid while still
+writing its report to standard output. The report is the answer; the exit status
+alone is not, so the adapter reads the output first and only treats the exit
+status as an error when nothing parseable came back.
+
+No command reports a project's default schema. `openspec status --change <name>
+--json` carries `planningHome.defaultSchema`, but it needs a change to exist,
+and a project with no changes is exactly where someone is deciding which schema
+to adopt. ossm reads `schema:` from `openspec/config.yaml`.
 
 ## 5. Update detection
 
@@ -207,3 +231,23 @@ Tests fetch from git repositories built inside the test, including one whose
 default branch is `master`. That exercises the real git commands offline, so the
 suite still makes no network request and the case that breaks a naive
 implementation is covered rather than assumed.
+
+## 12. OpenSpec requires an artifact description; the briefing says it is optional
+
+OpenSpec 1.10.0 rejects a schema whose artifact declares no `description`:
+
+```
+Invalid schema: artifacts.0.description: Invalid input: expected string, received undefined
+```
+
+The briefing's section 3 lists `description` as optional, and its own fixture
+`research-first` omits it on every artifact. That fixture cannot be installed.
+
+Found by an end to end test, not by reading: the install wrote the schema,
+OpenSpec validated it, and the rejection appeared on screen. The install flow
+reporting it correctly is the system working, but it is better known before the
+install than after.
+
+So ossm follows the CLI. A missing artifact description is a fatal finding in
+`internal/schema`, with a message naming OpenSpec as the source of the rule, and
+every fixture in the repository now declares one.

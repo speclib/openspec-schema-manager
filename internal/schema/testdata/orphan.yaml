@@ -3,13 +3,16 @@ version: 1
 description: An artifact nothing requires and that does not gate apply
 artifacts:
   - id: specs
+    description: what specs produces
     generates: specs.md
     template: spec.md
   - id: tasks
+    description: what tasks produces
     generates: tasks.md
     template: tasks.md
     requires: [specs]
   - id: sketch
+    description: what sketch produces
     generates: sketch.md
     template: sketch.md
 apply:

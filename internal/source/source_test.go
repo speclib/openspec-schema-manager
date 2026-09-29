@@ -16,9 +16,11 @@ description: Lightweight schema for well-scoped, low-risk changes
 artifacts:
   - id: specs
     generates: specs/**/*.md
+    description: Specifications as user stories
     template: specs/spec.md
   - id: tasks
     generates: tasks.md
+    description: Implementation checklist derived from the specs
     template: tasks.md
     requires: [specs]
 apply:

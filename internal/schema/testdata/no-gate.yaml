@@ -3,6 +3,7 @@ version: 1
 description: Nothing gates apply and nothing is tracked
 artifacts:
   - id: tasks
+    description: what tasks produces
     generates: tasks.md
     template: tasks.md
 apply:

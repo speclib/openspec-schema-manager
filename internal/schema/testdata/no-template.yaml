@@ -3,6 +3,7 @@ version: 1
 description: An artifact declaring no template
 artifacts:
   - id: tasks
+    description: what tasks produces
     generates: tasks.md
 apply:
   requires: [tasks]

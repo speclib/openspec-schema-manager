@@ -3,17 +3,21 @@ version: 1
 description: Branches after the proposal and joins again at tasks
 artifacts:
   - id: proposal
+    description: what proposal produces
     generates: proposal.md
     template: proposal.md
   - id: specs
+    description: what specs produces
     generates: specs/**/*.md
     template: spec.md
     requires: [proposal]
   - id: design
+    description: what design produces
     generates: design.md
     template: design.md
     requires: [proposal]
   - id: tasks
+    description: what tasks produces
     generates: tasks.md
     template: tasks.md
     requires: [specs, design]

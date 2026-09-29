@@ -107,10 +107,10 @@ func TestOutsideAProjectTheProjectTabExplainsItself(t *testing.T) {
 
 	view := flat(render(press(t, outsideProject(), "1")))
 
-	if !strings.Contains(view, "Not in an OpenSpec project") {
+	if !strings.Contains(view, "no OpenSpec project here") {
 		t.Errorf("the Project tab does not say there is no project:\n%s", view)
 	}
-	if !strings.Contains(view, "installing needs a project") {
+	if !strings.Contains(view, "installing one needs a project") {
 		t.Errorf("the Project tab does not say what that costs:\n%s", view)
 	}
 	if !strings.Contains(view, "--path") {
@@ -529,13 +529,13 @@ func TestAPlaceholderIgnoresEveryMessage(t *testing.T) {
 
 	type odd struct{}
 
-	p := projectScreen(false)
+	p := localScreen()
 
 	updated, cmd := p.Update(odd{})
 	if cmd != nil {
 		t.Error("a placeholder returned a command")
 	}
-	if updated.Title() != "Project" {
+	if updated.Title() != "Local" {
 		t.Errorf("title = %q", updated.Title())
 	}
 
@@ -545,5 +545,54 @@ func TestAPlaceholderIgnoresEveryMessage(t *testing.T) {
 	}
 	if updated.Capturing() {
 		t.Error("a placeholder reports that it captures text")
+	}
+}
+
+func TestAnInstallFinishedReachesEveryScreen(t *testing.T) {
+	t.Parallel()
+
+	root := demoProject(t, "schema: spec-driven\n")
+	reader := &ProjectReader{CLI: fullProject(), Root: root}
+
+	m := New(Options{Version: "0.1.0", InProject: true, ProjectRoot: root, ProjectRead: reader})
+
+	updated, cmd := m.Update(InstallFinished{Name: "minimalist"})
+	m = updated.(Model)
+
+	if cmd == nil {
+		t.Fatal("an install did not reach the Project screen")
+	}
+
+	updated, _ = m.Update(cmd())
+	m = updated.(Model)
+
+	if got := flat(render(press(t, m, "1"))); !strings.Contains(got, "add-auth") {
+		t.Errorf("the project was not re-read after the install:\n%s", got)
+	}
+}
+
+func TestInitReadsTheProjectInsideOne(t *testing.T) {
+	t.Parallel()
+
+	root := demoProject(t, "schema: spec-driven\n")
+	reader := &ProjectReader{CLI: fullProject(), Root: root}
+
+	m := New(Options{Version: "0.1.0", InProject: true, ProjectRoot: root, ProjectRead: reader})
+
+	if m.Init() == nil {
+		t.Error("Init asked for nothing inside a project with a reader")
+	}
+}
+
+func TestInitAsksForNothingOutsideAProject(t *testing.T) {
+	t.Parallel()
+
+	root := demoProject(t, "schema: spec-driven\n")
+	reader := &ProjectReader{CLI: fullProject(), Root: root}
+
+	m := New(Options{Version: "0.1.0", ProjectRead: reader})
+
+	if m.Init() != nil {
+		t.Error("Init read a project from outside one")
 	}
 }

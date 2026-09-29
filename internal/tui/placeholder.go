@@ -41,24 +41,6 @@ func (p placeholder) View(width, height int) string {
 	return b.String()
 }
 
-func projectScreen(inProject bool) Screen {
-	holds := "The OpenSpec project you are standing in: its default schema, every schema available to it and where each resolves from, and the schema each change uses."
-	if !inProject {
-		holds = "Not in an OpenSpec project. Browse Registry or Local; installing needs a project. Start ossm inside one, or point it at one with --path."
-	}
-
-	return placeholder{
-		title:     "Project",
-		milestone: "05",
-		holds:     holds,
-		keys: []KeyHelp{
-			{Key: "enter", Description: "open the selected schema"},
-			{Key: "s", Description: "set the project default schema"},
-			{Key: "u", Description: "update an installed schema"},
-		},
-	}
-}
-
 func localScreen() Screen {
 	return placeholder{
 		title:     "Local",

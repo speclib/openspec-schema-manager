@@ -3,9 +3,11 @@ version: 1
 description: Two artifacts sharing an id
 artifacts:
   - id: tasks
+    description: what tasks produces
     generates: tasks.md
     template: tasks.md
   - id: tasks
+    description: what tasks produces
     generates: other.md
     template: other.md
 apply:

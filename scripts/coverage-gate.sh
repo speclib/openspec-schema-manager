@@ -37,9 +37,10 @@ floor_for() {
     # vendored renderer itself fails, which it does not on a graph that
     # already passed cycle detection.
     "$module/internal/graph")    echo "99.0" ;;
-    # 90.9 in FindProjectRoot: filepath.Abs only fails when the working
-    # directory has been removed underneath the process.
-    "$module/internal/openspec") echo "92.0" ;;
+    # Lowered from 92.0 with the install flow. The remainder is filesystem
+    # failures during a copy, plus FindProjectRoot's filepath.Abs, which only
+    # fails when the working directory has been removed underneath the process.
+    "$module/internal/openspec") echo "91.0" ;;
     # The uncovered remainder is error branches that need a filesystem or a
     # marshaller to fail: a JSON encoder refusing a plain struct, a rename
     # failing after a successful write.
@@ -50,12 +51,13 @@ floor_for() {
     # The uncovered remainder is filesystem failures during a copy: a file
     # that opens and then refuses to read, a directory that vanishes mid-walk.
     "$module/internal/source")   echo "88.0" ;;
-    # Lowered again with the detail screen: the remaining branches need a
-    # pane smaller than one row, which no terminal produces.
-    "$module/internal/tui")      echo "97.5" ;;
+    # Lowered again with the project and install screens. The remainder is
+    # panes smaller than one row and a few error branches that need the
+    # filesystem to fail mid-write.
+    "$module/internal/tui")      echo "96.5" ;;
     # Lowered from 98.0 with milestone 02. The drop is all error branches in
     # internal/registry that need a failing filesystem to reach.
-    TOTAL)                       echo "96.0" ;;
+    TOTAL)                       echo "95.5" ;;
     *)                           echo "" ;;
   esac
 }

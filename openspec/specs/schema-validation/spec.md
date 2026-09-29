@@ -23,9 +23,14 @@ schema SHALL NOT have to run validation once per mistake.
 ### Requirement: What makes a schema unusable
 
 Validation SHALL report as fatal: an empty artifact list, a duplicate artifact
-id, an artifact id that is empty, an unknown artifact id in `requires`, an
-artifact requiring itself, a cycle among `requires` edges, an unknown artifact
-id in `apply.requires`, an empty `apply.requires`, and an absent `apply.tracks`.
+id, an artifact id that is empty, an artifact with no description, an unknown
+artifact id in `requires`, an artifact requiring itself, a cycle among
+`requires` edges, an unknown artifact id in `apply.requires`, an empty
+`apply.requires`, and an absent `apply.tracks`.
+
+An artifact with no description is fatal because OpenSpec 1.10.0 rejects such a
+schema outright. The briefing calls the field optional; the CLI decides what it
+will accept, and a schema it rejects cannot be installed.
 
 #### Scenario: An unknown requirement
 
@@ -44,6 +49,12 @@ id in `apply.requires`, an empty `apply.requires`, and an absent `apply.tracks`.
 - **WHEN** an artifact names its own id in `requires`
 - **THEN** it is reported as fatal and named as a self-reference rather than as
   a cycle, because that is what a reader is looking at
+
+#### Scenario: An artifact with no description
+
+- **WHEN** an artifact declares no description
+- **THEN** it is reported as fatal, naming the artifact and saying that OpenSpec
+  rejects a schema whose artifact has none
 
 #### Scenario: Nothing gates apply
 

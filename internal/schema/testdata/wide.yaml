@@ -3,12 +3,15 @@ version: 1
 description: Three independent artifacts all gating apply
 artifacts:
   - id: research
+    description: what research produces
     generates: research.md
     template: research.md
   - id: risks
+    description: what risks produces
     generates: risks.md
     template: risks.md
   - id: budget
+    description: what budget produces
     generates: budget.md
     template: budget.md
 apply:

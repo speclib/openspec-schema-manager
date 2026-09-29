@@ -92,13 +92,26 @@ func appOptions(opts options) (tui.Options, error) {
 		ASCII:   !graph.UnicodeAvailable(),
 	}
 
+	cli := openspec.NewExec()
+
+	appOpts.Installer = &tui.Installer{
+		Fetcher:   source.NewGit(paths.SchemaCache),
+		CLI:       cli,
+		Root:      appOpts.ProjectRoot,
+		InProject: appOpts.InProject,
+	}
+
+	if appOpts.InProject {
+		appOpts.ProjectRead = &tui.ProjectReader{CLI: cli, Root: appOpts.ProjectRoot}
+	}
+
 	appOpts.Registry = &tui.RegistryLoader{
 		Store: registry.Store{
 			Path: paths.RegistryFile,
 			URL:  cfg.RegistryURL,
 		},
 		Fetcher: registry.NewHTTPFetcher(),
-		CLI:     openspec.NewExec(),
+		CLI:     cli,
 		WorkDir: workDir,
 		TTL:     cfg.RegistryTTL,
 	}

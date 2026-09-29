@@ -3,13 +3,16 @@ version: 1
 description: design and tasks require each other
 artifacts:
   - id: proposal
+    description: what proposal produces
     generates: proposal.md
     template: proposal.md
   - id: design
+    description: what design produces
     generates: design.md
     template: design.md
     requires: [tasks]
   - id: tasks
+    description: what tasks produces
     generates: tasks.md
     template: tasks.md
     requires: [design]

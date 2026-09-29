@@ -17,9 +17,12 @@ import (
 )
 
 const (
-	cols        = 100
-	rows        = 30
-	waitTimeout = 10 * time.Second
+	cols = 100
+	rows = 30
+	// Generous on purpose. The gate runs every package in parallel, and these
+	// cases wait on a real process drawing to a real pseudo terminal; a 10s
+	// wait failed under that load while passing on its own.
+	waitTimeout = 45 * time.Second
 	pollEvery   = 20 * time.Millisecond
 )
 

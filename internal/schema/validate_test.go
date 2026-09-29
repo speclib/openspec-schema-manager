@@ -302,3 +302,37 @@ func TestNoFindingsIsValid(t *testing.T) {
 		t.Error("no findings produced findings")
 	}
 }
+
+func TestAnArtifactWithNoDescriptionIsFatal(t *testing.T) {
+	t.Parallel()
+
+	body := `name: n
+version: 1
+description: a schema
+artifacts:
+  - id: tasks
+    generates: tasks.md
+    template: tasks.md
+apply:
+  requires: [tasks]
+  tracks: tasks.md
+`
+
+	s, err := Parse("schema.yaml", []byte(body))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	findings := Validate(s)
+	if findings.Valid() {
+		t.Fatal("an artifact with no description validates; OpenSpec rejects it")
+	}
+
+	got := messages(findings.Fatal())
+	if !strings.Contains(got, "tasks") {
+		t.Errorf("the finding does not name the artifact:\n%s", got)
+	}
+	if !strings.Contains(got, "OpenSpec rejects") {
+		t.Errorf("the finding does not say whose rule it is:\n%s", got)
+	}
+}
