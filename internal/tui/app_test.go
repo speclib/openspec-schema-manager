@@ -1,12 +1,14 @@
 package tui
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/speclib/openspec-schema-manager/internal/ansi"
+	"github.com/speclib/openspec-schema-manager/internal/config"
 )
 
 func render(m Model) string { return ansi.Strip(m.Render()) }
@@ -529,13 +531,13 @@ func TestAPlaceholderIgnoresEveryMessage(t *testing.T) {
 
 	type odd struct{}
 
-	p := localScreen()
+	p := composerScreen()
 
 	updated, cmd := p.Update(odd{})
 	if cmd != nil {
 		t.Error("a placeholder returned a command")
 	}
-	if updated.Title() != "Local" {
+	if updated.Title() != "Composer" {
 		t.Errorf("title = %q", updated.Title())
 	}
 
@@ -594,5 +596,154 @@ func TestInitAsksForNothingOutsideAProject(t *testing.T) {
 
 	if m.Init() != nil {
 		t.Error("Init read a project from outside one")
+	}
+}
+
+func withLocal(t *testing.T, dirs []string) Model {
+	t.Helper()
+
+	return New(Options{
+		Version:  "0.1.0",
+		Config:   config.Config{SchemasDirs: dirs},
+		Recents:  config.Recents{Path: filepath.Join(t.TempDir(), "recents.json"), Cap: 20},
+		Resolver: &Resolver{ASCII: true},
+	})
+}
+
+func TestThePromptOpensFromAnyTab(t *testing.T) {
+	t.Parallel()
+
+	for _, tab := range []string{"1", "2", "3", "4"} {
+		m := press(t, withLocal(t, nil), tab, ":")
+
+		if got := flat(render(m)); !strings.Contains(got, "Open a schema folder") {
+			t.Errorf("the prompt did not open from tab %s:\n%s", tab, got)
+		}
+	}
+
+	m := press(t, withLocal(t, nil), "ctrl+o")
+	if got := flat(render(m)); !strings.Contains(got, "Open a schema folder") {
+		t.Errorf("ctrl+o did not open the prompt:\n%s", got)
+	}
+}
+
+func TestADigitTypedIntoThePromptDoesNotSwitchTabs(t *testing.T) {
+	t.Parallel()
+
+	m := press(t, withLocal(t, nil), ":", "4", "2")
+
+	if got := m.CurrentTitle(); got != "Registry" {
+		t.Errorf("a digit in the prompt moved to %q", got)
+	}
+	if got := flat(render(m)); !strings.Contains(got, "42") {
+		t.Errorf("the digits did not reach the prompt:\n%s", got)
+	}
+}
+
+func TestEscClosesThePrompt(t *testing.T) {
+	t.Parallel()
+
+	m := press(t, withLocal(t, nil), ":", "esc")
+
+	if got := flat(render(m)); strings.Contains(got, "Open a schema folder") {
+		t.Errorf("esc did not close the prompt:\n%s", got)
+	}
+	if m.Quitting() {
+		t.Error("esc quit the application")
+	}
+}
+
+func TestOpeningAPathFromThePromptSelectsTheLocalTab(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	dir := localSchema(t, root, "quick", "quick")
+
+	m := press(t, withLocal(t, nil), ":")
+
+	for _, r := range dir {
+		m = press(t, m, string(r))
+	}
+	m = press(t, m, "enter")
+
+	if got := m.CurrentTitle(); got != "Local" {
+		t.Errorf("the Local tab was not selected, it is %q", got)
+	}
+
+	got := flat(render(m))
+	if strings.Contains(got, "Open a schema folder") {
+		t.Errorf("the prompt stayed open:\n%s", got)
+	}
+	if !strings.Contains(got, "quick") {
+		t.Errorf("the opened schema is not listed:\n%s", got)
+	}
+}
+
+func TestAPathThatCannotBeOpenedKeepsThePromptOpen(t *testing.T) {
+	t.Parallel()
+
+	m := press(t, withLocal(t, nil), ":", "/", "n", "o", "p", "e", "enter")
+
+	got := flat(render(m))
+	if !strings.Contains(got, "Open a schema folder") {
+		t.Errorf("the prompt closed on a bad path:\n%s", got)
+	}
+	if !strings.Contains(got, "does not exist") {
+		t.Errorf("the reason is not shown:\n%s", got)
+	}
+}
+
+func TestBackspaceAndTabReachThePrompt(t *testing.T) {
+	t.Parallel()
+
+	m := press(t, withLocal(t, nil), ":", "a", "b", "backspace")
+
+	got := flat(render(m))
+	if !strings.Contains(got, "path: a") {
+		t.Errorf("backspace did not reach the prompt:\n%s", got)
+	}
+
+	m = press(t, m, "tab")
+	if m.CurrentTitle() != "Registry" {
+		t.Errorf("tab in the prompt switched to %q", m.CurrentTitle())
+	}
+}
+
+func TestCtrlCQuitsFromThePrompt(t *testing.T) {
+	t.Parallel()
+
+	if m := press(t, withLocal(t, nil), ":", "ctrl+c"); !m.Quitting() {
+		t.Error("ctrl+c did not quit from the prompt")
+	}
+}
+
+func TestThePathFlagOpensAFolderOnLaunch(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	dir := localSchema(t, root, "quick", "quick")
+
+	m := New(Options{
+		Version:  "0.1.0",
+		Recents:  config.Recents{Path: filepath.Join(t.TempDir(), "recents.json"), Cap: 20},
+		Resolver: &Resolver{ASCII: true},
+		OpenPath: dir,
+	})
+
+	if got := m.CurrentTitle(); got != "Local" {
+		t.Errorf("the Local tab was not selected, it is %q", got)
+	}
+	if got := flat(render(m)); !strings.Contains(got, "quick") {
+		t.Errorf("the schema is not listed:\n%s", got)
+	}
+}
+
+func TestTheHelpMentionsThePathPrompt(t *testing.T) {
+	t.Parallel()
+
+	m := press(t, withLocal(t, nil), "?")
+
+	if got := flat(render(m)); !strings.Contains(got, "open a schema folder by path") {
+		t.Errorf("the help does not mention the path prompt:\n%s", got)
 	}
 }

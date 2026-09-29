@@ -41,19 +41,6 @@ func (p placeholder) View(width, height int) string {
 	return b.String()
 }
 
-func localScreen() Screen {
-	return placeholder{
-		title:     "Local",
-		milestone: "06",
-		holds:     "Schemas in your configured directories, any folder you open by path, and the ones you opened recently.",
-		keys: []KeyHelp{
-			{Key: "enter", Description: "open the selected schema"},
-			{Key: "e", Description: "edit the selected file"},
-			{Key: "c", Description: "duplicate under a new name"},
-		},
-	}
-}
-
 func composerScreen() Screen {
 	return placeholder{
 		title:     "Composer",

@@ -5,6 +5,7 @@ import "strings"
 var globalKeys = []KeyHelp{
 	{Key: "tab / shift+tab", Description: "move between tabs"},
 	{Key: "1 to 4", Description: "select a tab by number"},
+	{Key: ": or ctrl+o", Description: "open a schema folder by path"},
 	{Key: "?", Description: "open and close this help"},
 	{Key: "q", Description: "close an overlay, or quit"},
 	{Key: "ctrl+c", Description: "quit from anywhere"},

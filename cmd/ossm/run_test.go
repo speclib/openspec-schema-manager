@@ -165,18 +165,18 @@ func TestAppOptions(t *testing.T) {
 		}
 	})
 
-	t.Run("path flag points elsewhere", func(t *testing.T) {
+	t.Run("the path flag names a folder to open", func(t *testing.T) {
 		t.Chdir(outside)
 
-		got, err := appOptions(options{path: project})
+		got, err := appOptions(options{path: "/some/schema/folder"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if !got.InProject {
-			t.Error("--path into a project did not detect it")
+		if got.OpenPath != "/some/schema/folder" {
+			t.Errorf("OpenPath = %q", got.OpenPath)
 		}
-		if got.WorkDir != project {
-			t.Errorf("WorkDir = %q, want %q", got.WorkDir, project)
+		if got.InProject {
+			t.Error("--path changed which project ossm thinks it is in")
 		}
 	})
 }

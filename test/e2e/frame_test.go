@@ -37,7 +37,7 @@ func TestTabMovesToTheNextTabAndWraps(t *testing.T) {
 	s.waitFor("Registry ·")
 
 	s.send("\t")
-	s.waitFor("Built in milestone 06")
+	s.waitFor("Local ·")
 
 	s.send("\t")
 	s.waitFor("Built in milestone 07")
@@ -538,4 +538,144 @@ func TestInstallingOutsideAProjectIsRefused(t *testing.T) {
 	s.send("i")
 
 	s.waitFor("needs an OpenSpec project")
+}
+
+func localSchemasDir(t *testing.T) string {
+	t.Helper()
+
+	dir := t.TempDir()
+
+	for _, name := range []string{"minimalist", "team-review"} {
+		base := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Join(base, "templates"), 0o755); err != nil {
+			t.Fatalf("creating %s: %v", base, err)
+		}
+
+		body := "name: " + name + `
+version: 1
+description: a schema for testing
+artifacts:
+  - id: tasks
+    generates: tasks.md
+    description: the tasks
+    template: tasks.md
+apply:
+  requires: [tasks]
+  tracks: tasks.md
+`
+		if err := os.WriteFile(filepath.Join(base, "schema.yaml"), []byte(body), 0o644); err != nil {
+			t.Fatalf("writing the schema: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(base, "templates", "tasks.md"), []byte("# tasks\n"), 0o644); err != nil {
+			t.Fatalf("writing the template: %v", err)
+		}
+	}
+
+	return dir
+}
+
+func writeConfigWithDirs(t *testing.T, root, registryURL, schemasDir string) {
+	t.Helper()
+
+	dir := filepath.Join(root, "config", "ossm")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("creating the config directory: %v", err)
+	}
+
+	body := "registry_url: " + registryURL + "\nregistry_ttl: 0s\nschemas_dirs:\n  - " + schemasDir + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "config.yml"), []byte(body), 0o644); err != nil {
+		t.Fatalf("writing config.yml: %v", err)
+	}
+}
+
+func TestTheLocalTabListsConfiguredSchemas(t *testing.T) {
+	root := t.TempDir()
+	schemas := localSchemasDir(t)
+	writeConfigWithDirs(t, root, "file://"+filepath.Join(root, "absent.json"), schemas)
+
+	s := newSession(t, sessionOptions{root: root})
+
+	s.send("3")
+	s.waitFor("Local · 2 schema(s)")
+	s.waitFor("minimalist")
+	s.waitFor("team-review")
+}
+
+func TestThePathPromptOpensASchema(t *testing.T) {
+	root := t.TempDir()
+	schemas := localSchemasDir(t)
+	writeConfig(t, root, "file://"+filepath.Join(root, "absent.json"))
+
+	s := newSession(t, sessionOptions{root: root})
+	s.waitFor("Registry ·")
+
+	s.send(":")
+	s.waitFor("Open a schema folder")
+
+	s.send(filepath.Join(schemas, "team-review"))
+	s.send("\r")
+
+	s.waitFor("Local ·")
+	s.waitFor("Recent")
+	s.waitFor("team-review")
+}
+
+func TestDuplicatingASchema(t *testing.T) {
+	root := t.TempDir()
+	schemas := localSchemasDir(t)
+	writeConfigWithDirs(t, root, "file://"+filepath.Join(root, "absent.json"), schemas)
+
+	s := newSession(t, sessionOptions{root: root})
+
+	s.send("3")
+	s.waitFor("Local · 2 schema(s)")
+
+	s.send("c")
+	s.waitFor("Duplicate minimalist")
+
+	s.send("mine")
+	s.send("\r")
+
+	s.waitFor("copied to")
+	s.waitFor("Local · 3 schema(s)")
+
+	raw, err := os.ReadFile(filepath.Join(schemas, "mine", "schema.yaml"))
+	if err != nil {
+		t.Fatalf("the copy was not written: %v", err)
+	}
+	if !strings.Contains(string(raw), "name: mine") {
+		t.Errorf("the copy does not declare the new name:\n%s", raw)
+	}
+}
+
+func TestTheFileTreeAndAnEditorRoundTrip(t *testing.T) {
+	root := t.TempDir()
+	schemas := localSchemasDir(t)
+	writeConfigWithDirs(t, root, "file://"+filepath.Join(root, "absent.json"), schemas)
+
+	// A stub editor that appends a line to whatever it is given.
+	editor := filepath.Join(t.TempDir(), "stub-editor")
+	if err := os.WriteFile(editor, []byte("#!/bin/sh\nprintf '\\n## appended by the stub editor\\n' >> \"$1\"\n"), 0o755); err != nil {
+		t.Fatalf("writing the stub editor: %v", err)
+	}
+
+	s := newSession(t, sessionOptions{root: root, env: []string{"EDITOR=" + editor, "VISUAL="}})
+
+	s.send("3")
+	s.waitFor("Local · 2 schema(s)")
+
+	s.send("t")
+	s.waitFor("Files of minimalist")
+	s.waitFor("schema.yaml")
+	s.waitFor("tasks.md")
+	s.waitFor("This schema validates")
+
+	s.send("j")
+	s.send("e")
+
+	template := filepath.Join(schemas, "minimalist", "templates", "tasks.md")
+	waitForFile(t, template, "appended by the stub editor")
+
+	s.waitFor("Files of minimalist")
+	s.waitFor("This schema validates")
 }

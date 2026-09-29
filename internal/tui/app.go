@@ -20,6 +20,8 @@ type Options struct {
 	Resolver    *Resolver
 	Installer   *Installer
 	ProjectRead *ProjectReader
+	Recents     config.Recents
+	OpenPath    string
 }
 
 type Model struct {
@@ -27,6 +29,7 @@ type Model struct {
 	screens  []Screen
 	current  int
 	helpOpen bool
+	prompt   *pathPrompt
 	status   string
 	width    int
 	height   int
@@ -39,9 +42,10 @@ func New(opts Options) Model {
 		screens: []Screen{
 			newProjectScreen(opts.InProject, opts.ProjectRoot, opts.ProjectRead, opts.Resolver),
 			newRegistryScreen(opts.Registry, opts.Resolver, opts.Installer),
-			localScreen(),
+			newLocalScreen(opts.Config.SchemasDirs, opts.Recents, opts.Resolver),
 			composerScreen(),
 		},
+		prompt: newPathPrompt(),
 		width:  80,
 		height: 24,
 	}
@@ -59,7 +63,26 @@ func New(opts Options) Model {
 		m.screens[at], _ = m.screens[at].Update(opts.Registry.Load(context.Background()))
 	}
 
+	if opts.OpenPath != "" {
+		m.openPath(opts.OpenPath)
+	}
+
 	return m
+}
+
+func (m *Model) local() *localModel {
+	screen, _ := m.screens[m.indexOf("Local")].(*localModel)
+	return screen
+}
+
+func (m *Model) openPath(dir string) {
+	local := m.local()
+	if local == nil {
+		return
+	}
+
+	local.Remember(dir)
+	m.current = m.indexOf("Local")
 }
 
 func (m Model) indexOf(title string) int {
@@ -128,6 +151,10 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	}
 
+	if m.prompt.open {
+		return m.handlePromptKey(msg, key)
+	}
+
 	if m.helpOpen {
 		switch key {
 		case "?", "esc", "q":
@@ -141,6 +168,9 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	if !m.screens[m.current].Capturing() {
 		switch key {
+		case ":", "ctrl+o":
+			m.prompt.Open()
+			return m, nil
 		case "q":
 			m.quit = true
 			return m, tea.Quit
@@ -157,6 +187,28 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	updated, cmd := m.screens[m.current].Update(msg)
 	m.screens[m.current] = updated
 	return m, cmd
+}
+
+func (m Model) handlePromptKey(msg tea.KeyPressMsg, key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "esc":
+		m.prompt.Close()
+	case "enter":
+		if dir, ok := m.prompt.Submit(); ok {
+			m.prompt.Close()
+			m.openPath(dir)
+		}
+	case "tab":
+		m.prompt.Complete()
+	case "backspace":
+		m.prompt.Backspace()
+	default:
+		if msg.Text != "" {
+			m.prompt.Type(msg.Text)
+		}
+	}
+
+	return m, nil
 }
 
 func (m Model) selectTab(key string) (Model, bool) {
@@ -198,7 +250,9 @@ func (m Model) Render() string {
 		paneHeight = 1
 	}
 
-	if m.helpOpen {
+	if m.prompt.open {
+		b.WriteString(m.prompt.View(m.width))
+	} else if m.helpOpen {
 		b.WriteString(renderHelp(m.screens[m.current], m.width))
 	} else {
 		b.WriteString(m.screens[m.current].View(m.width, paneHeight))

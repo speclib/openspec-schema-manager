@@ -71,15 +71,13 @@ func appOptions(opts options) (tui.Options, error) {
 		return tui.Options{}, err
 	}
 
-	if opts.path != "" {
-		workDir = opts.path
-	}
-
 	appOpts := tui.Options{
-		Version: strings.TrimSpace(version),
-		WorkDir: workDir,
-		Config:  cfg,
-		Paths:   paths,
+		Version:  strings.TrimSpace(version),
+		WorkDir:  workDir,
+		Config:   cfg,
+		Paths:    paths,
+		Recents:  config.Recents{Path: paths.RecentsFile, Cap: cfg.RecentsCap},
+		OpenPath: opts.path,
 	}
 
 	if root, err := openspec.FindProjectRoot(workDir); err == nil {

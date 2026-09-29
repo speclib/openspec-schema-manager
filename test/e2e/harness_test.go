@@ -270,3 +270,26 @@ func testCommand(t *testing.T, root string, args ...string) *exec.Cmd {
 
 	return cmd
 }
+
+// waitForFile polls a file until it holds the text, or fails with what it did
+// hold. Editing goes through a real process, so there is nothing on screen that
+// changes the moment the editor exits.
+func waitForFile(t *testing.T, path, text string) {
+	t.Helper()
+
+	deadline := time.Now().Add(waitTimeout)
+	var last string
+
+	for time.Now().Before(deadline) {
+		raw, err := os.ReadFile(path)
+		if err == nil {
+			last = string(raw)
+			if strings.Contains(last, text) {
+				return
+			}
+		}
+		time.Sleep(pollEvery)
+	}
+
+	t.Fatalf("waited %s for %q to appear in %s; it held:\n%s", waitTimeout, text, path, last)
+}

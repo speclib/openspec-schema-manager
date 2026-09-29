@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-09-29
+goal: A user can take any schema, make it theirs, and edit it without leaving
+  ossm or building an editor into it

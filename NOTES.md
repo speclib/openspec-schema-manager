@@ -251,3 +251,38 @@ install than after.
 So ossm follows the CLI. A missing artifact description is a fatal finding in
 `internal/schema`, with a message naming OpenSpec as the source of the rule, and
 every fixture in the repository now declares one.
+
+## 13. openspec schema fork is not used, and cannot be
+
+`openspec schema fork <source> [name]` copies a schema into the project for
+customisation, which looks like exactly what duplication needs. It is not used,
+for two reasons found by running it.
+
+It takes a schema name OpenSpec can already resolve, not a path:
+
+```
+$ openspec schema fork /path/to/a/schema copied --json
+{"forked": false, "error": "Schema '/path/to/a/schema' not found", "available": [...]}
+```
+
+A registry schema that has not been installed, and a folder opened by path, are
+both invisible to it. Those are the two cases duplication exists for.
+
+And it fails outright when the source is read-only:
+
+```
+$ openspec schema fork spec-driven my-fork --json
+{"forked": false, "error": "EACCES: permission denied, open '.../openspec/schemas/.fork-staging-WFwIPY/schema.yaml'"}
+```
+
+It copies the source preserving its mode and then reopens the copy for writing
+to change the name. A schema in the Nix store is mode 444, so forking any
+built-in schema fails on every Nix install. Forking a schema already in the
+project works, because that copy is writable.
+
+So ossm copies the tree itself and writes every file mode 644. A test duplicates
+a deliberately read-only source and asserts the copy is writable.
+
+The copied `schema.yaml` has only its `name:` line rewritten, as text. A schema
+carries comments, instruction blocks and a deliberate artifact order, and a YAML
+round trip loses the first and can reorder the rest.
